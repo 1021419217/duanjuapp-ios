@@ -28,7 +28,7 @@ jobs:
   build-ios:
     # macOS runner 分钟数按 10 倍计费：Free 计划每月约 200 macOS 分钟，
     # 单次真果鉴构建约 20 分钟墙钟（200 账单分钟），一个月 Free 额度只够一次。
-    runs-on: macos-latest
+    runs-on: macos-13
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
