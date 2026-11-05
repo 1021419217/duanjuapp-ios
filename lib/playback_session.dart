@@ -48,6 +48,7 @@ class PlaybackSession extends ChangeNotifier {
        _epoch = store.profileEpoch {
     final preferences = store.playbackPreferences;
     _speed = preferences.speed;
+    _boostSpeed = preferences.boostSpeed;
     _quality = preferences.quality;
     _danmakuEnabled = preferences.danmaku;
     _adBlock = preferences.adBlock;
@@ -162,6 +163,7 @@ class PlaybackSession extends ChangeNotifier {
   DateTime _standbyAt = DateTime(2000);
   double _openedAt = 0;
   double _speed = 1;
+  double _boostSpeed = 2;
   int _quality = 0;
   int _route = 0;
   bool _danmakuEnabled = true;
@@ -192,6 +194,9 @@ class PlaybackSession extends ChangeNotifier {
   double get aspectRatio => _aspectRatio;
   bool get aspectKnown => _aspectKnown;
   double get speed => _speed;
+
+  /// 长按倍速的当前档位（2 / 2.5 / 3）。
+  double get boostSpeed => _boostSpeed;
   int get quality => _quality;
   bool get local => _plan?.local == true;
   List<int> get qualities => _plan?.qualities ?? const [];
@@ -249,7 +254,7 @@ class PlaybackSession extends ChangeNotifier {
     preload: true,
   );
 
-  double get _rate => _boosting ? 2 : _speed;
+  double get _rate => _boosting ? _boostSpeed : _speed;
 
   void _buffering(bool buffering) {
     _stallTimer?.cancel();
@@ -865,7 +870,7 @@ class PlaybackSession extends ChangeNotifier {
         return;
       }
       _boosting = true;
-      unawaited(_setRate(2));
+      unawaited(_setRate(_boostSpeed));
       _notify();
     });
   }
@@ -875,7 +880,7 @@ class PlaybackSession extends ChangeNotifier {
     _boostTimer?.cancel();
     _boostTimer = null;
     _boosting = true;
-    unawaited(_setRate(2));
+    unawaited(_setRate(_boostSpeed));
     _notify();
   }
 
@@ -942,6 +947,14 @@ class PlaybackSession extends ChangeNotifier {
     _speed = value;
     _notify();
     if (!_boosting) await _setRate(value);
+  }
+
+  Future<void> setBoostSpeed(double value) async {
+    if (value == _boostSpeed) return;
+    await _savePreferences(_preferences.copyWith(boostSpeed: value));
+    _boostSpeed = value;
+    _notify();
+    if (_boosting) await _setRate(value);
   }
 
   Future<void> setQuality(int value) async {

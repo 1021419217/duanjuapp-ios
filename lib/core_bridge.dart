@@ -248,6 +248,9 @@ abstract class AppRepository {
 
   // ---- 自定义源管理（所有人可用，不限制管理员）----
   Future<List<CustomSourceSite>> customSources() async => const [];
+
+  /// 对所有站源并发测速，返回 [{id, name, base, latencyMs, ok}]。
+  Future<List<Map<String, dynamic>>> speedTestSources() async => const [];
   Future<CustomSourceSite> addCustomSource({
     required String name,
     required String base,
@@ -1075,6 +1078,15 @@ class NativeRepository extends AppRepository {
     return [
       for (final row in result['items'] as List? ?? const [])
         CustomSourceSite.fromJson(Map<String, dynamic>.from(row as Map)),
+    ];
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> speedTestSources() async {
+    final result = await _call({'action': 'sourceSpeedTest'});
+    return [
+      for (final row in result['items'] as List? ?? const [])
+        Map<String, dynamic>.from(row as Map),
     ];
   }
 

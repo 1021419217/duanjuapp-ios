@@ -37,6 +37,9 @@ class LocalStore extends ChangeNotifier {
   int _epoch = 0;
   int _failures = 0;
   Map<String, bool> _sourceSwitches = {};
+
+  /// 已被用户「彻底删除」的内置源 id（不可恢复，清数据重装才会回来）。
+  Set<String> _deletedSources = {};
   List<CustomSourceSite> _customSources = [];
   DateTime _retryAfter = DateTime(2000);
 
@@ -61,6 +64,7 @@ class LocalStore extends ChangeNotifier {
       _configurationError = null;
       _locked = forceLogin && profile.protected;
       _loadSourceSwitches();
+      _loadDeletedSources();
       _loadCustomSources();
       _loadLibrary();
       _loadSeriesCandidates();
@@ -129,6 +133,7 @@ class LocalStore extends ChangeNotifier {
   bool allowsSource(String source) =>
       !locked &&
       SourceSite.isAvailable(source) &&
+      !isSourceDeleted(source) &&
       (SourceSite.isCustomId(source) || profile.allows(source)) &&
       sourceEnabled(source);
   List<SourceSite> get sources => [
@@ -149,6 +154,9 @@ class LocalStore extends ChangeNotifier {
   bool sourceEnabled(String source) =>
       _sourceSwitches[source] ?? !SourceSite.isRestricted(source);
 
+  /// 内置源是否已被彻底删除。
+  bool isSourceDeleted(String source) => _deletedSources.contains(source);
+
   void _loadSourceSwitches() {
     try {
       final raw = _string('sourceSwitches');
@@ -157,6 +165,17 @@ class LocalStore extends ChangeNotifier {
           : Map<String, bool>.from(jsonDecode(raw) as Map);
     } catch (_) {
       _sourceSwitches = {};
+    }
+  }
+
+  void _loadDeletedSources() {
+    try {
+      final raw = _string('deletedSources');
+      _deletedSources = raw == null
+          ? {}
+          : Set<String>.from(jsonDecode(raw) as List);
+    } catch (_) {
+      _deletedSources = {};
     }
   }
 
@@ -230,6 +249,22 @@ class LocalStore extends ChangeNotifier {
       final switches = {..._sourceSwitches, source: enabled};
       await _commit({'sourceSwitches': jsonEncode(switches)});
       _sourceSwitches = switches;
+      _notify();
+    });
+  }
+
+  /// 彻底删除内置源：从所有列表移除，且不提供恢复入口。
+  /// 重新编译或清空本机数据重装后才会重新出现。
+  Future<void> deleteSource(String source) {
+    if (!SourceSite.isAvailable(source) || SourceSite.isCustomId(source)) {
+      return Future.error(StateError('站源无效'));
+    }
+    final epoch = _epoch;
+    return _queue(() async {
+      if (epoch != _epoch) throw StateError('当前用户已变更，请重试');
+      final deleted = {..._deletedSources, source};
+      await _commit({'deletedSources': jsonEncode(deleted.toList())});
+      _deletedSources = deleted;
       _notify();
     });
   }

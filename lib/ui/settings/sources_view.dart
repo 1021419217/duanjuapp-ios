@@ -26,6 +26,8 @@ class SourcesView extends StatefulWidget {
 class _SourcesViewState extends State<SourcesView> {
   var _syncing = false;
   var _synced = false;
+  var _testing = false;
+  List<Map<String, dynamic>> _speedResults = const [];
 
   @override
   void didChangeDependencies() {
@@ -60,6 +62,49 @@ class _SourcesViewState extends State<SourcesView> {
     });
   }
 
+  Future<void> _delete(String id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('删除「$name」'),
+        content: const Text(
+          '删除后该站源将从应用内彻底消失、无法恢复（重新编译或清空数据重装才会重新出现）。确定删除吗？',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await saveSetting(context, () => widget.store.deleteSource(id));
+  }
+
+  Future<void> _runSpeedTest() async {
+    if (_testing) return;
+    setState(() {
+      _testing = true;
+      _speedResults = const [];
+    });
+    try {
+      final repository = AppScope.of(context).repository;
+      final results = await repository.speedTestSources();
+      if (!mounted) return;
+      setState(() => _speedResults = results);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _speedResults = const []);
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
+  }
+
   Future<void> _openManager() async {
     final repository = AppScope.of(context).repository;
     await openPage<void>(
@@ -78,15 +123,23 @@ class _SourcesViewState extends State<SourcesView> {
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
+          _SpeedTestCard(
+            testing: _testing,
+            results: _speedResults,
+            onTest: _runSpeedTest,
+          ),
+          const SizedBox(height: 12),
           SettingsCard(
             children: [
               for (final site in SourceSite.values)
-                _SourceTile(
-                  title: site.name,
-                  subtitle: site.description,
-                  enabled: store.sourceEnabled(site.id),
-                  onChanged: (value) => _toggle(site.id, value, true),
-                ),
+                if (!store.isSourceDeleted(site.id))
+                  _SourceTile(
+                    title: site.name,
+                    subtitle: site.description,
+                    enabled: store.sourceEnabled(site.id),
+                    onChanged: (value) => _toggle(site.id, value, true),
+                    onDelete: () => _delete(site.id, site.name),
+                  ),
             ],
           ),
           const SizedBox(height: 12),
@@ -135,11 +188,13 @@ class _SourceTile extends StatelessWidget {
     required this.subtitle,
     required this.enabled,
     required this.onChanged,
+    this.onDelete,
   });
   final String title;
   final String subtitle;
   final bool enabled;
   final ValueChanged<bool>? onChanged;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) => MergeSemantics(
@@ -147,12 +202,23 @@ class _SourceTile extends StatelessWidget {
       builder: (focusNode) => ListTile(
         focusNode: focusNode,
         minTileHeight: 68,
-        contentPadding: const EdgeInsets.fromLTRB(20, 4, 16, 4),
+        contentPadding: const EdgeInsets.fromLTRB(20, 4, 8, 4),
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
         onTap: onChanged == null ? null : () => onChanged!(!enabled),
         trailing: ExcludeFocus(
-          child: Switch(value: enabled, onChanged: onChanged),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onDelete != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  tooltip: '删除',
+                  onPressed: onDelete,
+                ),
+              Switch(value: enabled, onChanged: onChanged),
+            ],
+          ),
         ),
       ),
     ),
@@ -174,4 +240,94 @@ class _Note extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _SpeedTestCard extends StatelessWidget {
+  const _SpeedTestCard({
+    required this.testing,
+    required this.results,
+    required this.onTest,
+  });
+  final bool testing;
+  final List<Map<String, dynamic>> results;
+  final VoidCallback onTest;
+
+  @override
+  Widget build(BuildContext context) => SettingsCard(
+    children: [
+      SettingsTile(
+        icon: Icons.speed_rounded,
+        title: testing ? '正在测速…' : '站源测速',
+        subtitle: results.isEmpty
+            ? '检测所有站源的连通性与响应延迟'
+            : '共 ${results.length} 个站源 · 绿色快 / 橙色一般 / 红色慢 / 灰色不可用',
+        enabled: !testing,
+        onTap: testing ? null : onTest,
+        trailing: testing
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : null,
+      ),
+      if (results.isNotEmpty)
+        for (final r in results)
+          _SpeedRow(
+            name: (r['name'] as String?) ?? (r['id'] as String?) ?? '',
+            ok: r['ok'] == true,
+            latency: (r['latencyMs'] as num?)?.toInt() ?? 0,
+          ),
+    ],
+  );
+}
+
+class _SpeedRow extends StatelessWidget {
+  const _SpeedRow({
+    required this.name,
+    required this.ok,
+    required this.latency,
+  });
+  final String name;
+  final bool ok;
+  final int latency;
+
+  @override
+  Widget build(BuildContext context) {
+    final String label;
+    final Color color;
+    if (!ok) {
+      label = '不可用';
+      color = Colors.grey;
+    } else if (latency < 200) {
+      label = '$latency ms';
+      color = Colors.green;
+    } else if (latency < 500) {
+      label = '$latency ms';
+      color = Colors.orange;
+    } else {
+      label = '$latency ms';
+      color = Colors.red;
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
 }

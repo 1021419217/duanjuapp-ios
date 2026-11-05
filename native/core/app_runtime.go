@@ -400,6 +400,8 @@ func nativeDispatch(input nativeInput) (any, error) {
 	duration := 60 * time.Second
 	if input.Action == "moveDownloads" {
 		duration = 10 * time.Minute
+	} else if input.Action == "sourceSpeedTest" {
+		duration = 3 * time.Minute
 	} else if input.Action == "danmaku" {
 		duration = 10 * time.Second
 	} else if input.Action == "preload" {
@@ -547,6 +549,8 @@ func nativeDispatch(input nativeInput) (any, error) {
 	// 这里不返回 Flutter 端那套任务进度字段（xp 的 core 没有站源任务状态机）。
 	case "sourceStatus":
 		return map[string]any{"source": canonicalProviderSource(input.Source), "available": true}, nil
+	case "sourceSpeedTest":
+		return map[string]any{"items": engine.sourceSpeedTest(ctx)}, nil
 	case "addCustomSource":
 		record, err := engine.addCustomMaccmsSource(input.Name, input.Base, input.Rule, input.Kind)
 		if err != nil {

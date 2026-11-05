@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"duanjuapp/native/core/seku"
 )
@@ -534,4 +537,75 @@ func (engine *nativeEngine) nativeSekuDetail(ctx context.Context, drama nativeDr
 		"tags":     sekuTagRefs(m),
 		"magnets":  magnets,
 	}, nil
+}
+
+// ---- 源测速 ----
+
+// sourceSpeedTest 并发探测所有影视站源与自定义源的连通性与响应延迟。
+// 每个源最多等 6 秒、8 路并发；只测「能否连上 + 响应头耗时」，不下载正文。
+func (engine *nativeEngine) sourceSpeedTest(ctx context.Context) []map[string]any {
+	type target struct {
+		id   string
+		name string
+		base string
+	}
+	var targets []target
+	seen := map[string]bool{}
+	add := func(id, name, base string) {
+		base = strings.TrimRight(strings.TrimSpace(base), "/")
+		if base == "" || seen[base] {
+			return
+		}
+		seen[base] = true
+		if name == "" {
+			name = id
+		}
+		targets = append(targets, target{id: id, name: name, base: base})
+	}
+	// seku 影视源（v_ 前缀，78 个）
+	for _, slot := range seku.Slots() {
+		add(sekuSourceID(slot), seku.SiteName(slot), seku.HomeURL(slot))
+	}
+	// 自定义源（custom: 前缀）
+	for _, record := range engine.customMaccmsSources() {
+		add(record.ID, record.Name, record.Base)
+	}
+
+	results := make([]map[string]any, len(targets))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 8)
+	for i, t := range targets {
+		wg.Add(1)
+		go func(i int, t target) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			latency, ok := probeSourceURL(ctx, t.base)
+			results[i] = map[string]any{
+				"id":        t.id,
+				"name":      t.name,
+				"base":      t.base,
+				"latencyMs": latency,
+				"ok":        ok,
+			}
+		}(i, t)
+	}
+	wg.Wait()
+	return results
+}
+
+// probeSourceURL 测单个地址的连通性与响应延迟（毫秒）。
+func probeSourceURL(ctx context.Context, rawURL string) (int, bool) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return 0, false
+	}
+	client := &http.Client{Timeout: 6 * time.Second}
+	start := time.Now()
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, false
+	}
+	defer resp.Body.Close()
+	return int(time.Since(start).Milliseconds()), true
 }

@@ -105,6 +105,21 @@ class PlaybackSettings extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
+          Text('长按倍速', style: label),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final speed in playbackBoostSpeeds)
+                _Choice(
+                  label: '${speed}x',
+                  selected: speed == session.boostSpeed,
+                  onSelected: () => _change(() => session.setBoostSpeed(speed)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
           Text('清晰度', style: label),
           const SizedBox(height: 10),
           Wrap(
