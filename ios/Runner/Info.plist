@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>红果鉴</string>
+	<string>全剧TV</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -16,6 +16,48 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>duanju_app</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>IconC</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconC</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>IconT</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconT</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>IconGear</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconGear</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>IconPlay</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconPlay</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

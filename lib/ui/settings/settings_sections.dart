@@ -15,6 +15,7 @@ import '../app_scope.dart';
 import '../users/users_view.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
+import 'app_icon_sheet.dart';
 import 'appearance_settings.dart';
 import 'backup_actions.dart';
 import 'diary_view.dart';
@@ -343,6 +344,12 @@ class SettingsSection extends StatelessWidget {
           SettingsTile(
             title: appName,
             value: version.isEmpty ? '版本未知' : '版本 $version',
+          ),
+          SettingsTile(
+            title: '应用图标',
+            subtitle: '切换桌面图标',
+            icon: Icons.apps_rounded,
+            onTap: () => showAppIconPicker(context),
           ),
         ],
       ),
