@@ -9,7 +9,7 @@ import '../widgets/cover_image.dart';
 import '../widgets/drama_grid.dart';
 import '../widgets/focus_ring.dart';
 
-const _shade = Color(0xFF161214);
+const _shade = Color(0xFF0A0A0C);
 
 typedef _HeroMetrics = ({
   double design,

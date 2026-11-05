@@ -6,7 +6,7 @@ import '../app_scope.dart';
 import 'cover_image.dart';
 import 'focus_ring.dart';
 
-const _coverRadius = 12.0;
+const _coverRadius = 16.0;
 
 class _PosterButton extends StatefulWidget {
   const _PosterButton({
