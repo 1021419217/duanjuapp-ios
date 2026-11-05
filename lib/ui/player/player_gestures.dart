@@ -25,8 +25,8 @@ class GestureHudState {
 /// 首次越过判定距离后锁定的滑动方向，避免斜着划时在「亮度」和「快进」之间跳。
 enum _Axis { none, horizontal, vertical }
 
-/// 播放器的触摸手势：左右滑动无极快进/快退（滑动距离映射到时间轴），
-/// 左半屏上下滑调亮度，右半屏上下滑调音量。
+/// 播放器的触摸手势：左右滑动无极快进/快退（滑满一整屏 = 固定秒数，与视频
+/// 总时长无关，长短视频手感一致），左半屏上下滑调亮度，右半屏上下滑调音量。
 ///
 /// 单独抽出来是因为 [PlaybackSurface] 已经同时管着控制条、弹幕和弹窗焦点，
 /// 手势状态（起点、方向锁、抑制 tap）自成一套，混进去会很难读。
@@ -79,6 +79,11 @@ class PlayerGestures extends ChangeNotifier {
   double _viewWidth = 0;
   int _seekStartMs = 0;
   int _durationMs = 0;
+
+  /// 左右滑动无极快进的灵敏度：滑满一整屏宽度对应的秒数。
+  /// 与视频总时长无关，避免长视频「手稍微一动就跳几十分钟」。
+  static const int _seekSpanSeconds = 60;
+
   double _swipeThreshold = 70;
   double _horizontalThreshold = 60;
   double _brightness = .5;
@@ -128,8 +133,8 @@ class PlayerGestures extends ChangeNotifier {
     _durationMs = session.player.state.duration.inMilliseconds;
     _swipeThreshold = math.max(30, math.min(80, height * .08));
     _horizontalThreshold = width > 0
-        ? math.max(40, math.min(120, width * .12))
-        : 60;
+        ? math.max(18, math.min(60, width * .05))
+        : 40;
     _moved = false;
     _axis = _Axis.none;
     _brightnessMode = false;
@@ -231,10 +236,12 @@ class PlayerGestures extends ChangeNotifier {
     _reset();
   }
 
-  /// 根据横向位移计算目标时间轴位置：滑满一整屏宽度 ≈ 前进/后退整个视频时长。
+  /// 根据横向位移计算目标时间轴位置：滑满一整屏宽度 ≈ 前进/后退固定秒数，
+  /// 与视频总时长无关，长短视频手感一致。
   int _seekTargetMs(double dx) {
     if (_viewWidth <= 0 || _durationMs <= 0) return _seekStartMs;
-    final raw = (_seekStartMs + dx / _viewWidth * _durationMs).round();
+    final spanMs = _seekSpanSeconds * 1000;
+    final raw = (_seekStartMs + dx / _viewWidth * spanMs).round();
     return raw.clamp(0, _durationMs);
   }
 
