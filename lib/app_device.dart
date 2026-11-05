@@ -9,7 +9,6 @@ class AppDevice {
   final bool television;
   final String version;
   static const channel = MethodChannel('duanju/device');
-  static const appIconChannel = MethodChannel('duanju/appIcon');
   static var _televisionMode = false;
   static var _phoneMode = false;
 
@@ -149,19 +148,6 @@ class AppDevice {
         PlayerOrientation.auto => const [],
       });
     } catch (_) {}
-  }
-
-  /// 切换应用图标。name 为备选图标名（如 IconC），传 null 恢复默认图标。
-  ///
-  /// iOS 会在切换时弹系统确认框，此 Future 要等用户确认后才会返回。
-  static Future<bool> setAppIcon(String? name) async {
-    try {
-      return await appIconChannel.invokeMethod<bool>('setIcon', name) ?? false;
-    } on MissingPluginException {
-      return false;
-    } on PlatformException {
-      return false;
-    }
   }
 
   static Future<({int level, bool charging})?> battery() async {

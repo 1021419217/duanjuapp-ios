@@ -51,5 +51,3 @@ flutter:
     - assets/video_enhancement/
     # 番茄内置源：引擎启动配置与分类过滤规则。
     - assets/fanqie/
-    # 应用图标缩略图（设置里切换桌面图标用）。
-    - assets/icons/

@@ -78,6 +78,16 @@ class MinePage extends StatelessWidget {
     onTap: () => unawaited(openLive(context, store: store)),
   );
 
+  /// 观看记录入口：记录不再直接铺在首页，点进去才看到完整列表。
+  Widget _history(BuildContext context) => _MineEntry(
+    icon: Icons.history_rounded,
+    title: '观看记录',
+    subtitle: store.history.isEmpty
+        ? '还没有观看记录'
+        : '最近看过 ${store.history.length} 部',
+    onTap: () => _openHistory(context),
+  );
+
   Widget _poster(
     BuildContext context,
     WatchEntry entry,
@@ -103,8 +113,6 @@ class MinePage extends StatelessWidget {
   }
 
   Widget _phone(BuildContext context) {
-    const width = 100.0;
-    final history = store.history.take(20).toList();
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       children: [
@@ -113,29 +121,6 @@ class MinePage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _userCard(context),
         ),
-        SectionHeader(
-          title: '最近观看',
-          action: '全部',
-          onAction: () => _openHistory(context),
-        ),
-        const SizedBox(height: 6),
-        if (history.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: _EmptyHistory(height: 150),
-          )
-        else
-          SizedBox(
-            height: ProgressPoster.extentFor(context, width),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: history.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (context, index) =>
-                  _poster(context, history[index], width),
-            ),
-          ),
         if (store.canDownload) ...[
           SectionHeader(
             title: '下载',
@@ -154,6 +139,8 @@ class MinePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _history(context),
+              const SizedBox(height: 10),
               _live(context),
               const SizedBox(height: 10),
               _settings(context),

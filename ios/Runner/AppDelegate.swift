@@ -48,26 +48,6 @@ import CFNetwork
                 "bypass": settings["ExceptionsList"] as? [String] ?? [],
                 "pac": (settings["ProxyAutoConfigEnable"] as? NSNumber)?.boolValue == true])
       }
-      let iconChannel = FlutterMethodChannel(name: "duanju/appIcon", binaryMessenger: registrar.messenger())
-      iconChannel.setMethodCallHandler { call, result in
-        guard call.method == "setIcon" else {
-          result(FlutterMethodNotImplemented)
-          return
-        }
-        let raw = call.arguments as? String
-        let name = (raw?.isEmpty ?? true) ? nil : raw
-        guard UIApplication.shared.supportsAlternateIcons else {
-          result(FlutterError(code: "unsupported", message: "设备不支持切换图标", details: nil))
-          return
-        }
-        UIApplication.shared.setAlternateIconName(name) { error in
-          if let error = error {
-            result(FlutterError(code: "setIconFailed", message: error.localizedDescription, details: nil))
-          } else {
-            result(true)
-          }
-        }
-      }
     }
   }
 }

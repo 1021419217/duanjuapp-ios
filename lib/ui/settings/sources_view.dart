@@ -96,7 +96,12 @@ class _SourcesViewState extends State<SourcesView> {
       final repository = AppScope.of(context).repository;
       final results = await repository.speedTestSources();
       if (!mounted) return;
-      setState(() => _speedResults = results);
+      // 已删除的内置源不再出现在测速结果里，避免删了之后第二次测速又冒出来。
+      final store = widget.store;
+      final visible = results
+          .where((r) => !store.isSourceDeleted((r['id'] as String?) ?? ''))
+          .toList();
+      setState(() => _speedResults = visible);
     } catch (_) {
       if (!mounted) return;
       setState(() => _speedResults = const []);
