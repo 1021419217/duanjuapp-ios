@@ -36,18 +36,20 @@ abstract final class AppTheme {
     // 模拟毛玻璃的分层通透感（真 BackdropFilter 用在有背景图的页面）。
     final scheme = dark
         ? base.copyWith(
+            // Lumenic 中性冷调灰黑：背景不是纯黑，卡片用带冷调的深灰，
+            // 配合 BackdropFilter 呈现通透的磨砂玻璃质感。
             surface: const Color(0xFF0B0B0E),
             onSurface: Colors.white,
-            onSurfaceVariant: Colors.white.withValues(alpha: 0.72),
-            outline: Colors.white.withValues(alpha: 0.16),
-            outlineVariant: Colors.white.withValues(alpha: 0.08),
-            surfaceContainerLowest: const Color(0xFF000000),
-            surfaceContainerLow: const Color(0xFF101013),
-            surfaceContainer: const Color(0xFF15151A),
-            surfaceContainerHigh: const Color(0xFF1C1C22),
-            surfaceContainerHighest: const Color(0xFF25252C),
+            onSurfaceVariant: const Color(0xFF8E8E93),
+            outline: Colors.white.withValues(alpha: 0.14),
+            outlineVariant: Colors.white.withValues(alpha: 0.09),
+            surfaceContainerLowest: const Color(0xFF0A0A0C),
+            surfaceContainerLow: const Color(0xFF141416),
+            surfaceContainer: const Color(0xFF1C1C1E),
+            surfaceContainerHigh: const Color(0xFF232326),
+            surfaceContainerHighest: const Color(0xFF2A2A2E),
             surfaceDim: const Color(0xFF000000),
-            surfaceBright: const Color(0xFF2C2C34),
+            surfaceBright: const Color(0xFF303036),
           )
         : base.copyWith(
             surface: Colors.white,
@@ -60,10 +62,13 @@ abstract final class AppTheme {
 
     const radius = 20.0;
     final background = dark
-        ? const Color(0xFF000000)
+        ? const Color(0xFF0A0A0C)
         : scheme.surfaceContainerLowest;
+    // 卡片用半透明磨砂：低不透明度 + 细描边，让下层内容与模糊透出来。
     final glass = CardThemeData(
-      color: scheme.surfaceContainer,
+      color: dark
+          ? scheme.surfaceContainer.withValues(alpha: 0.72)
+          : scheme.surfaceContainer,
       elevation: 0,
       margin: EdgeInsets.zero,
       shadowColor: Colors.transparent,
@@ -120,10 +125,11 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: dark
-            ? const Color(0xE60A0A0C)
-            : Colors.white.withValues(alpha: 0.94),
+            ? const Color(0x990A0A0C)
+            : Colors.white.withValues(alpha: 0.80),
         elevation: 0,
-        indicatorColor: scheme.primary.withValues(alpha: 0.16),
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: Colors.white.withValues(alpha: 0.14),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return theme.textTheme.labelMedium?.copyWith(
@@ -134,7 +140,7 @@ abstract final class AppTheme {
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
           );
         }),
       ),
