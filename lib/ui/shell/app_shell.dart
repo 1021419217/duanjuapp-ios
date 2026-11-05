@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -202,22 +203,28 @@ class _AppShellState extends State<AppShell> {
       },
       child: switch (AppScope.formFactorOf(context)) {
         FormFactor.phone => Scaffold(
+          extendBody: true,
           body: pages,
           bottomNavigationBar: covered
               ? null
-              : NavigationBar(
-                  selectedIndex: _tab.index,
-                  onDestinationSelected: (index) =>
-                      _select(AppTab.values[index]),
-                  destinations: [
-                    for (final tab in AppTab.values)
-                      NavigationDestination(
-                        key: ValueKey('nav-${tab.name}'),
-                        icon: _badged(tab, Icon(tab.icon)),
-                        selectedIcon: _badged(tab, Icon(tab.selectedIcon)),
-                        label: tab.label,
-                      ),
-                  ],
+              : ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: NavigationBar(
+                      selectedIndex: _tab.index,
+                      onDestinationSelected: (index) =>
+                          _select(AppTab.values[index]),
+                      destinations: [
+                        for (final tab in AppTab.values)
+                          NavigationDestination(
+                            key: ValueKey('nav-${tab.name}'),
+                            icon: _badged(tab, Icon(tab.icon)),
+                            selectedIcon: _badged(tab, Icon(tab.selectedIcon)),
+                            label: tab.label,
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
         ),
         FormFactor.pad || FormFactor.window => _wide(pages),
