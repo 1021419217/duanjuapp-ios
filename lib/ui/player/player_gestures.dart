@@ -82,7 +82,7 @@ class PlayerGestures extends ChangeNotifier {
 
   /// 左右滑动无极快进的灵敏度：滑满一整屏宽度对应的秒数。
   /// 与视频总时长无关，避免长视频「手稍微一动就跳几十分钟」。
-  static const int _seekSpanSeconds = 60;
+  static const int _seekSpanSeconds = 120;
 
   double _swipeThreshold = 70;
   double _horizontalThreshold = 60;
@@ -246,17 +246,22 @@ class PlayerGestures extends ChangeNotifier {
   }
 
   /// 滑动途中预览：只更新 HUD 文案，不真正 seek。
+  /// 显示「偏移量 | 目标时间 / 总时长」并附一条目标位置进度，方便边滑边看进度。
   void _previewSeek(double dx) {
     if (_durationMs <= 0) {
       _show(SwipeAction.seek, 0, label: '无法快进');
       return;
     }
-    final delta = _seekTargetMs(dx) - _seekStartMs;
+    final target = _seekTargetMs(dx);
+    final delta = target - _seekStartMs;
     final forward = delta >= 0;
+    final progress = (target / _durationMs).clamp(0.0, 1.0);
     _show(
       SwipeAction.seek,
-      0,
-      label: '${forward ? '快进' : '后退'} ${_fmtOffset(delta.abs())}',
+      progress,
+      label:
+          '${forward ? '+' : '-'}${_fmtClock(delta.abs())} | '
+          '${_fmtClock(target)} / ${_fmtClock(_durationMs)}',
     );
   }
 
@@ -266,7 +271,7 @@ class PlayerGestures extends ChangeNotifier {
     unawaited(session.seekTo(Duration(milliseconds: _seekTargetMs(dx))));
   }
 
-  static String _fmtOffset(int milliseconds) {
+  static String _fmtClock(int milliseconds) {
     final total = milliseconds ~/ 1000;
     final h = total ~/ 3600;
     final m = (total % 3600) ~/ 60;
@@ -333,12 +338,12 @@ class GestureHud extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.type == SwipeAction.none) return const SizedBox.shrink();
     if (state.type == SwipeAction.seek) {
-      final forward = !state.label.startsWith('后退');
+      final forward = !state.label.startsWith('-');
       return IgnorePointer(
         child: Center(
           child: Container(
-            width: 132,
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+            width: 224,
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
             decoration: _panel,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -348,7 +353,7 @@ class GestureHud extends StatelessWidget {
                       ? Icons.fast_forward_rounded
                       : Icons.fast_rewind_rounded,
                   color: Colors.white,
-                  size: 36,
+                  size: 32,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -358,6 +363,21 @@ class GestureHud extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     letterSpacing: .5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 184,
+                  height: 4,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: state.value.clamp(0.0, 1.0),
+                      backgroundColor: Colors.white24,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ],
