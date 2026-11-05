@@ -25,14 +25,14 @@ class GestureHudState {
 /// 首次越过判定距离后锁定的滑动方向，避免斜着划时在「亮度」和「快进」之间跳。
 enum _Axis { none, horizontal, vertical }
 
-/// 播放器的触摸手势：左右滑动快进/快退，左半屏上下滑调亮度，右半屏上下滑调音量。
+/// 播放器的触摸手势：左右滑动无极快进/快退（滑动距离映射到时间轴），
+/// 左半屏上下滑调亮度，右半屏上下滑调音量。
 ///
 /// 单独抽出来是因为 [PlaybackSurface] 已经同时管着控制条、弹幕和弹窗焦点，
 /// 手势状态（起点、方向锁、抑制 tap）自成一套，混进去会很难读。
 class PlayerGestures extends ChangeNotifier {
   PlayerGestures({
     required this.session,
-    this.seekStep = 15,
     this.brightnessZone = .5,
     this.volumeSwipe = true,
     this.requireHold = false,
@@ -48,9 +48,6 @@ class PlayerGestures extends ChangeNotifier {
   }
 
   final PlaybackSession session;
-
-  /// 一次左右滑动快进/快退的秒数。
-  final int seekStep;
 
   /// 亮度手势生效的左侧区域占播放区宽度的比例。
   ///
@@ -79,6 +76,9 @@ class PlayerGestures extends ChangeNotifier {
   Offset? _origin;
   Offset? _last;
   double _viewHeight = 0;
+  double _viewWidth = 0;
+  int _seekStartMs = 0;
+  int _durationMs = 0;
   double _swipeThreshold = 70;
   double _horizontalThreshold = 60;
   double _brightness = .5;
@@ -123,6 +123,9 @@ class PlayerGestures extends ChangeNotifier {
     _pointer = event.pointer;
     _origin = _last = event.localPosition;
     _viewHeight = height;
+    _viewWidth = width;
+    _seekStartMs = session.player.state.position.inMilliseconds;
+    _durationMs = session.player.state.duration.inMilliseconds;
     _swipeThreshold = math.max(30, math.min(80, height * .08));
     _horizontalThreshold = width > 0
         ? math.max(40, math.min(120, width * .12))
@@ -174,9 +177,8 @@ class PlayerGestures extends ChangeNotifier {
     }
 
     if (_axis == _Axis.horizontal && dx.abs() >= _horizontalThreshold) {
-      // 滑动途中只预览，抬手才真正跳转，免得一次滑动里反复 seek 拖死解码器。
-      final forward = dx > 0;
-      _show(SwipeAction.seek, 0, label: '${forward ? '快进' : '后退'} $seekStep 秒');
+      // 滑动途中只预览目标位置，抬手才真正跳转，免得一次滑动里反复 seek 拖死解码器。
+      _previewSeek(dx);
       return;
     }
 
@@ -209,7 +211,7 @@ class PlayerGestures extends ChangeNotifier {
       // 长按后没怎么滑动就松手：只收起提示，亮度保持原样。
       _dismiss();
     } else if (_moved && horizontal && _axis == _Axis.horizontal) {
-      _seek(delta.dx > 0 ? seekStep : -seekStep);
+      _commitSeek(delta.dx);
       _dismiss();
     } else if (_hud.type == SwipeAction.seek) {
       _dismiss();
@@ -229,17 +231,43 @@ class PlayerGestures extends ChangeNotifier {
     _reset();
   }
 
-  void _seek(int seconds) {
-    final duration = session.player.state.duration;
-    if (!session.ready || duration <= Duration.zero) return;
-    final target = Duration(
-      milliseconds:
-          (session.player.state.position.inMilliseconds + seconds * 1000).clamp(
-            0,
-            duration.inMilliseconds,
-          ),
+  /// 根据横向位移计算目标时间轴位置：滑满一整屏宽度 ≈ 前进/后退整个视频时长。
+  int _seekTargetMs(double dx) {
+    if (_viewWidth <= 0 || _durationMs <= 0) return _seekStartMs;
+    final raw = (_seekStartMs + dx / _viewWidth * _durationMs).round();
+    return raw.clamp(0, _durationMs);
+  }
+
+  /// 滑动途中预览：只更新 HUD 文案，不真正 seek。
+  void _previewSeek(double dx) {
+    if (_durationMs <= 0) {
+      _show(SwipeAction.seek, 0, label: '无法快进');
+      return;
+    }
+    final delta = _seekTargetMs(dx) - _seekStartMs;
+    final forward = delta >= 0;
+    _show(
+      SwipeAction.seek,
+      0,
+      label: '${forward ? '快进' : '后退'} ${_fmtOffset(delta.abs())}',
     );
-    unawaited(session.seekTo(target));
+  }
+
+  /// 抬手时真正跳转到预览位置。
+  void _commitSeek(double dx) {
+    if (!session.ready || _durationMs <= 0) return;
+    unawaited(session.seekTo(Duration(milliseconds: _seekTargetMs(dx))));
+  }
+
+  static String _fmtOffset(int milliseconds) {
+    final total = milliseconds ~/ 1000;
+    final h = total ~/ 3600;
+    final m = (total % 3600) ~/ 60;
+    final s = total % 60;
+    if (h > 0) {
+      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    }
+    return '$m:${s.toString().padLeft(2, '0')}';
   }
 
   void _show(SwipeAction action, double value, {String label = ''}) {
