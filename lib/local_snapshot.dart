@@ -36,6 +36,9 @@ class LocalSnapshot {
     // 自定义源是设备级配置，所有本地用户共用；必须列入受管字段，否则保存自定义源
     // 时 _commit 会因为 owns() 不成立而抛 StateError('无效的本地配置字段')。
     'customSources',
+    // 删除的内置源列表：设备级配置，所有本地用户共用；必须列入受管字段，否则删除内置源
+    // 时 _commit 会因为 owns() 不成立而抛 StateError('无效的本地配置字段')。
+    'deletedSources',
   };
   static const _retiredKeys = {
     'sourceGateEnabled',

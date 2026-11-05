@@ -971,6 +971,13 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     );
   }
 
+  String _boostSpeedText() {
+    final speed = _session.boostSpeed;
+    return speed == speed.roundToDouble()
+        ? speed.toInt().toString()
+        : speed.toString();
+  }
+
   Widget _boostBadge() => Container(
     height: 32,
     padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -978,14 +985,14 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
       color: Colors.black.withValues(alpha: .5),
       borderRadius: BorderRadius.circular(16),
     ),
-    child: const Row(
+    child: Row(
       mainAxisSize: MainAxisSize.min,
       spacing: 6,
       children: [
-        Icon(Icons.fast_forward_rounded, size: 16, color: Colors.white),
+        const Icon(Icons.fast_forward_rounded, size: 16, color: Colors.white),
         Text(
-          '2 倍速播放中',
-          style: TextStyle(
+          '${_boostSpeedText()} 倍速播放中',
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.w600,

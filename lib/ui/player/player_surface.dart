@@ -930,7 +930,11 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     valueListenable: widget.hint,
     builder: (context, hint, _) {
       final boosting = _session.boosting;
-      final text = boosting ? '倍速播放中' : hint;
+      final speed = _session.boostSpeed;
+      final speedText = speed == speed.roundToDouble()
+          ? speed.toInt().toString()
+          : speed.toString();
+      final text = boosting ? '$speedText 倍速播放中' : hint;
       if (text.isEmpty) return const SizedBox.shrink();
       return IgnorePointer(
         child: Align(
