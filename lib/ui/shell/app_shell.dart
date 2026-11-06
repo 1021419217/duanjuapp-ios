@@ -164,11 +164,6 @@ class _AppShellState extends State<AppShell> {
     AppTab.settings => SettingsPage(store: widget.store),
   };
 
-  void _openSearch() {
-    final source = SourceSite.byId(widget.store.source);
-    openSearch(context, widget.store, source);
-  }
-
   @override
   Widget build(BuildContext context) {
     final pages = NotificationListener<NavigationNotification>(
@@ -214,7 +209,6 @@ class _AppShellState extends State<AppShell> {
                   selected: _tab,
                   onSelect: _select,
                   badged: _badged,
-                  onSearch: _openSearch,
                 ),
             ],
           ),
@@ -578,19 +572,17 @@ class _TelevisionTab extends StatelessWidget {
   }
 }
 
-/// 悬浮毛玻璃胶囊导航：4 个 tab 装在一条半透明胶囊里，右侧是独立的
-/// 圆形搜索按钮。内容从下方滚过时会被高斯模糊透出。
+/// 悬浮毛玻璃胶囊导航：4 个 tab 均分装在一条半透明胶囊里，居中铺满。
+/// 搜索统一由顶部栏提供，这里不再单独放圆形搜索按钮。
 class _FloatingDock extends StatelessWidget {
   const _FloatingDock({
     required this.selected,
     required this.onSelect,
     required this.badged,
-    required this.onSearch,
   });
   final AppTab selected;
   final ValueChanged<AppTab> onSelect;
   final Widget Function(AppTab tab, Widget icon) badged;
-  final VoidCallback onSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -599,13 +591,7 @@ class _FloatingDock extends StatelessWidget {
       left: 14,
       right: 14,
       bottom: bottom + 16,
-      child: Row(
-        spacing: 10,
-        children: [
-          Expanded(child: _bar(context)),
-          _search(context),
-        ],
-      ),
+      child: _bar(context),
     );
   }
 
@@ -680,28 +666,4 @@ class _FloatingDock extends StatelessWidget {
     );
   }
 
-  Widget _search(BuildContext context) => ClipOval(
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-      child: Material(
-        color: const Color(0xB234343A),
-        shape: CircleBorder(
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: InkWell(
-          onTap: onSearch,
-          customBorder: const CircleBorder(),
-          child: const SizedBox(
-            width: 62,
-            height: 62,
-            child: Icon(
-              Icons.search_rounded,
-              color: Colors.white,
-              size: 26,
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
 }

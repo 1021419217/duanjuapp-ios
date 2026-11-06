@@ -54,6 +54,8 @@ class ExploreHero extends StatelessWidget {
     required this.onPlay,
     required this.onDetail,
     this.progress,
+    this.carousel = const <Drama>[],
+    this.onOpen,
   });
   final Drama drama;
   final String kicker;
@@ -62,6 +64,8 @@ class ExploreHero extends StatelessWidget {
   final VoidCallback onPlay;
   final VoidCallback onDetail;
   final double? progress;
+  final List<Drama> carousel;
+  final ValueChanged<Drama>? onOpen;
 
   _HeroMetrics _metrics(BuildContext context) =>
       switch (AppScope.formFactorOf(context)) {
@@ -126,9 +130,17 @@ class ExploreHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      // 手机端用沉浸式大图：海报铺满、底部压暗、超粗标题 + 分页点。
+      // 手机端：沉浸式真轮播，清晰封面铺满 + 左右滑动 + 分页点联动。
       if (AppScope.formFactorOf(context) == FormFactor.phone) {
-        return _phoneHero(context);
+        return _PhoneCarousel(
+          drama: drama,
+          carousel: carousel,
+          kicker: kicker,
+          meta: meta,
+          action: action,
+          onPlay: onPlay,
+          onOpen: onOpen,
+        );
       }
       final base = _metrics(context);
       final k = math.max(
@@ -138,147 +150,6 @@ class ExploreHero extends StatelessWidget {
       );
       return _hero(context, _scale(base, k), k);
     },
-  );
-
-  Widget _phoneHero(BuildContext context) => Semantics(
-    container: true,
-    label: kicker,
-    child: GestureDetector(
-      onTap: onPlay,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: SizedBox(
-          height: 356,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const ColoredBox(color: _shade),
-              CoverBackdrop(
-                drama: drama,
-                sigma: 22,
-                overlay: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.42, 1.0],
-                  colors: [
-                    Color(0x1A000000),
-                    Color(0x880A0A0C),
-                    Color(0xFF0A0A0C),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.14),
-                        ),
-                      ),
-                      child: Text(
-                        kicker,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      drama.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
-                        letterSpacing: -0.6,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 13,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xB21A1A20),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.14),
-                        ),
-                      ),
-                      child: Text(
-                        meta,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                        for (var i = 0; i < 4; i++)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5),
-                            child: Container(
-                              width: 5,
-                              height: 5,
-                              decoration: const BoxDecoration(
-                                color: Color(0x55FFFFFF),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        const Spacer(),
-                        Row(
-                          children: [
-                            Text(
-                              action,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const Icon(
-                              Icons.play_arrow_rounded,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
   );
 
   Widget _hero(BuildContext context, _HeroMetrics metrics, double k) {
@@ -446,6 +317,231 @@ class ExploreHero extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 手机端沉浸式轮播：清晰封面铺满，可左右滑动，分页点跟随真实页数联动。
+class _PhoneCarousel extends StatefulWidget {
+  const _PhoneCarousel({
+    required this.drama,
+    required this.carousel,
+    required this.kicker,
+    required this.meta,
+    required this.action,
+    required this.onPlay,
+    required this.onOpen,
+  });
+  final Drama drama;
+  final List<Drama> carousel;
+  final String kicker;
+  final String meta;
+  final String action;
+  final VoidCallback onPlay;
+  final ValueChanged<Drama>? onOpen;
+
+  @override
+  State<_PhoneCarousel> createState() => _PhoneCarouselState();
+}
+
+class _PhoneCarouselState extends State<_PhoneCarousel> {
+  final _controller = PageController();
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.carousel.isNotEmpty
+        ? widget.carousel
+        : <Drama>[widget.drama];
+    return Semantics(
+      container: true,
+      label: widget.kicker,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: SizedBox(
+          height: 372,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _controller,
+                itemCount: items.length,
+                onPageChanged: (index) => setState(() => _page = index),
+                itemBuilder: (context, index) =>
+                    _slide(context, items[index], index),
+              ),
+              Positioned(
+                left: 20,
+                bottom: 26,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        margin: const EdgeInsets.only(right: 5),
+                        width: i == _page ? 20 : 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: i == _page
+                              ? Colors.white
+                              : const Color(0x55FFFFFF),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _slide(BuildContext context, Drama d, int index) {
+    final repository = AppScope.of(context).repository;
+    final first = index == 0;
+    final label = first
+        ? widget.kicker
+        : (d.category.isNotEmpty ? d.category : '推荐');
+    final meta = first
+        ? widget.meta
+        : [
+            if (d.category.isNotEmpty) d.category,
+            if (d.episodes > 0) '共 ${d.episodes} 集',
+          ].join(' · ');
+    return GestureDetector(
+      onTap: () {
+        final onOpen = widget.onOpen;
+        if (onOpen != null) {
+          onOpen(d);
+        } else {
+          widget.onPlay();
+        }
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: _shade),
+          if (!DramaCover.imagesDisabled && d.id.isNotEmpty)
+            CoverImage(
+              key: ValueKey('hero-${d.id}-${d.cover}'),
+              drama: d,
+              repository: repository,
+              placeholder: const ColoredBox(color: _shade),
+              retryable: false,
+            ),
+          const IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.38, 1.0],
+                  colors: [
+                    Color(0x330A0A0C),
+                    Color(0x220A0A0C),
+                    Color(0xF20A0A0C),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  d.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                    letterSpacing: -0.6,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (meta.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xB21A1A20),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.14),
+                      ),
+                    ),
+                    child: Text(
+                      meta,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Text(
+                          first ? widget.action : '立即观看',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.play_arrow_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

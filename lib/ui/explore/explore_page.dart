@@ -13,7 +13,6 @@ import '../widgets/bar_button.dart';
 import '../widgets/category_tabs.dart';
 import '../widgets/choice_panel.dart';
 import '../widgets/drama_grid.dart';
-import '../widgets/drama_tile.dart';
 import '../widgets/page_header.dart';
 import '../widgets/source_bar.dart';
 import '../widgets/status_view.dart';
@@ -216,19 +215,6 @@ class ExplorePageState extends State<ExplorePage> {
                 padding: EdgeInsets.fromLTRB(inset, phone ? 8 : 16, inset, 0),
                 sliver: SliverToBoxAdapter(child: hero),
               ),
-            // 手机端把列表切成「热门剧 / 漫剧 / 真人剧」横向海报带，
-            // 下面再保留完整网格，浏览与无限加载都不受影响。
-            if (phone && items.length >= 6) ...[
-              for (final section in _sections(items))
-                SliverToBoxAdapter(
-                  child: _PosterRail(
-                    title: section.$1,
-                    items: section.$2,
-                    inset: inset,
-                    onOpen: _open,
-                  ),
-                ),
-            ],
             SliverPadding(
               padding: EdgeInsets.fromLTRB(inset, desktop ? 20 : 16, inset, 0),
               sliver: DramaSliverGrid(
@@ -273,6 +259,12 @@ class ExplorePageState extends State<ExplorePage> {
   }
 
   Widget? _hero(ExploreFeed explore) {
+    final items = explore.items;
+    // 轮播取当前分类列表的前几部，每部都是真实剧集，可左右滑动查看。
+    List<Drama> slides(Drama lead) => [
+      lead,
+      ...items.where((d) => d.id != lead.id),
+    ].take(6).toList();
     if (explore.resume case final entry?) {
       final drama = entry.drama;
       final total = drama.episodes;
@@ -281,6 +273,7 @@ class ExplorePageState extends State<ExplorePage> {
           : entry.episode;
       return ExploreHero(
         drama: drama,
+        carousel: slides(drama),
         kicker: '继续观看',
         meta: total > 0
             ? '看到第 ${entry.episode} 集 · 共 $total 集'
@@ -289,11 +282,13 @@ class ExplorePageState extends State<ExplorePage> {
         action: '继续第 $next 集',
         onPlay: () => _open(drama),
         onDetail: () => _open(drama),
+        onOpen: _open,
       );
     }
     if (explore.featured case final drama?) {
       return ExploreHero(
         drama: drama,
+        carousel: slides(drama),
         kicker: '今日推荐',
         meta: [
           if (drama.category.isNotEmpty) drama.category,
@@ -302,75 +297,9 @@ class ExplorePageState extends State<ExplorePage> {
         action: '立即观看',
         onPlay: () => _open(drama),
         onDetail: () => _open(drama),
+        onOpen: _open,
       );
     }
     return null;
   }
-
-  /// 把同一批剧切成三段，做成官网那种「热门剧 / 漫剧 / 真人剧」横向分区。
-  /// 只是展示层的分区，数据仍来自当前站源的同一个列表。
-  List<(String, List<Drama>)> _sections(List<Drama> items) {
-    List<Drama> slice(int start) => items.skip(start).take(6).toList();
-    return [
-      ('热门剧', slice(0)),
-      if (items.length > 6) ('漫剧', slice(6)),
-      if (items.length > 12) ('真人剧', slice(12)),
-    ];
-  }
-}
-
-class _PosterRail extends StatelessWidget {
-  const _PosterRail({
-    required this.title,
-    required this.items,
-    required this.inset,
-    required this.onOpen,
-  });
-  final String title;
-  final List<Drama> items;
-  final double inset;
-  final ValueChanged<Drama> onOpen;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: EdgeInsets.fromLTRB(inset, 20, inset, 10),
-        child: Row(
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: Color(0xFF8E8E93),
-            ),
-          ],
-        ),
-      ),
-      SizedBox(
-        height: DramaTile.extentFor(context, 96),
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: inset),
-          itemCount: items.length,
-          separatorBuilder: (context, index) => const SizedBox(width: 9),
-          itemBuilder: (context, index) => SizedBox(
-            width: 96,
-            child: DramaTile(
-              drama: items[index],
-              onTap: () => onOpen(items[index]),
-            ),
-          ),
-        ),
-      ),
-    ],
-  );
 }
