@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
@@ -80,7 +81,7 @@ class ExplorePageState extends State<ExplorePage> {
   /// 用 translucent 命中，不拦截卡片点击与网格的垂直滚动；电视端靠遥控器
   /// 方向键，不叠加手势。Hero 轮播自身的 PageView 会优先消费横向滑动，
   /// 所以在轮播上仍是翻海报，不会误切分类。
-  Widget _swipeLayer(ExploreFeed explore, Widget child) {
+  Widget _swipeLayer(ExploreFeed explore, Widget child, {double hintTop = 12}) {
     if (AppScope.formFactorOf(context) == FormFactor.television) return child;
     return GestureDetector(
       onHorizontalDragEnd: (details) {
@@ -92,8 +93,36 @@ class ExplorePageState extends State<ExplorePage> {
       child: Stack(
         children: [
           Positioned.fill(child: child),
-          Positioned(top: 12, left: 0, right: 0, child: _swipeHintBadge()),
+          Positioned(top: hintTop, left: 0, right: 0, child: _swipeHintBadge()),
         ],
+      ),
+    );
+  }
+
+  /// 手机端磨砂顶栏：与底栏 NavigationBar 用同一套「内容延伸到底 +
+  /// BackdropFilter 模糊透出」的逻辑。顶栏浮在内容之上，内容滚动时
+  /// 从它背后经过并被模糊，而不是被一条实心横条挡在下方。
+  Widget _frostedHeader(Widget child) {
+    final colors = Theme.of(context).colorScheme;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                colors.surface.withValues(alpha: 0.66),
+                colors.surface.withValues(alpha: 0.34),
+              ],
+            ),
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.07)),
+            ),
+          ),
+          child: child,
+        ),
       ),
     );
   }
@@ -216,29 +245,65 @@ class ExplorePageState extends State<ExplorePage> {
           onShowAll: _pickCategory,
         ),
       );
+      final header = SourceBar(
+        source: source.name,
+        searchController: _search,
+        onSwitchSource: (anchor) => pickSource(anchor, widget.store),
+        onOpenSearch: () => openSearch(context, widget.store, source),
+        onSearchSubmitted: (query) => _searchSubmitted(source, query),
+        actions: [
+          // 直播已移到底部导航作为独立 tab，顶栏不再重复放入口。
+          if (desktop)
+            BarButton(
+              icon: Icons.refresh_rounded,
+              tooltip: '刷新',
+              onPressed: explore.refresh,
+            ),
+        ],
+      );
+      final showTabs = !television || explore.feed!.items.isEmpty;
+      // 手机端：顶栏浮在内容之上做磨砂，内容延伸到屏幕顶（含状态栏），
+      // 初始用留白让开顶栏；滚动后卡片从顶栏背后经过并被模糊透出，
+      // 与底栏 NavigationBar 的「内容透过模糊」是同一套逻辑。
+      if (form == FormFactor.phone) {
+        final topPad = MediaQuery.paddingOf(context).top;
+        const headerBody = 62.0 + 48.0 + 8.0; // 标题栏 + 分类栏 + 余量
+        final topInset = topPad + headerBody;
+        return Scaffold(
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: _swipeLayer(
+                  explore,
+                  _content(explore, inset, false, tabs, topInset: topInset),
+                  hintTop: topInset + 4,
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _frostedHeader(
+                  SafeArea(
+                    bottom: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [header, if (showTabs) tabs],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
       return Scaffold(
         body: SafeArea(
           bottom: false,
           child: Column(
             children: [
-              if (!television)
-                SourceBar(
-                  source: source.name,
-                  searchController: _search,
-                  onSwitchSource: (anchor) => pickSource(anchor, widget.store),
-                  onOpenSearch: () => openSearch(context, widget.store, source),
-                  onSearchSubmitted: (query) => _searchSubmitted(source, query),
-                  actions: [
-                    // 直播已移到底部导航作为独立 tab，顶栏不再重复放入口。
-                    if (desktop)
-                      BarButton(
-                        icon: Icons.refresh_rounded,
-                        tooltip: '刷新',
-                        onPressed: explore.refresh,
-                      ),
-                  ],
-                ),
-              if (!television || explore.feed!.items.isEmpty) tabs,
+              if (!television) header,
+              if (showTabs) tabs,
               Expanded(
                 child: _swipeLayer(
                   explore,
@@ -256,29 +321,40 @@ class ExplorePageState extends State<ExplorePage> {
     ExploreFeed explore,
     double inset,
     bool television,
-    Widget tabs,
-  ) {
+    Widget tabs, {
+    // 手机端顶栏是浮层时，内容首部留出的空白，避免初始内容被磨砂顶栏压住。
+    double topInset = 0,
+  }) {
     final feed = explore.feed!;
     final hero = _hero(explore);
     final items = explore.items;
     if (feed.items.isEmpty) {
-      if (feed.loading) return const StatusView.loading();
-      if (feed.error.isNotEmpty) {
-        return StatusView(
+      final Widget status;
+      if (feed.loading) {
+        status = const StatusView.loading();
+      } else if (feed.error.isNotEmpty) {
+        status = StatusView(
           title: '暂时无法加载',
           message: feed.error,
           icon: Icons.cloud_off_rounded,
           action: '重试',
           onAction: () => feed.reload(force: true),
         );
+      } else {
+        status = StatusView(
+          title: '这里还没有剧',
+          message: '换一个分类看看',
+          icon: Icons.inbox_outlined,
+          action: '刷新',
+          onAction: () => feed.reload(force: true),
+        );
       }
-      return StatusView(
-        title: '这里还没有剧',
-        message: '换一个分类看看',
-        icon: Icons.inbox_outlined,
-        action: '刷新',
-        onAction: () => feed.reload(force: true),
-      );
+      return topInset > 0
+          ? Padding(
+              padding: EdgeInsets.only(top: topInset),
+              child: status,
+            )
+          : status;
     }
     final phone = AppScope.formFactorOf(context) == FormFactor.phone;
     final desktop = AppScope.formFactorOf(context) == FormFactor.window;
@@ -288,6 +364,9 @@ class ExplorePageState extends State<ExplorePage> {
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            // 顶栏留白：随内容一起滚动，滚动后卡片进入顶栏背后被模糊透出。
+            if (topInset > 0)
+              SliverToBoxAdapter(child: SizedBox(height: topInset)),
             if (television)
               SliverPadding(
                 padding: const EdgeInsets.only(top: 8),
