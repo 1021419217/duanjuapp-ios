@@ -82,9 +82,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ios/Pods
-          key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', '.flutter-plugins-dependencies') }}
+          key: pods-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', '.flutter-plugins-dependencies') }}
           restore-keys: |
-            pods-${{ runner.os }}-${{ runner.arch }}-
+            pods-v2-${{ runner.os }}-${{ runner.arch }}-
 
       # 真果鉴（--all-sources）= 全源版，含移植进来的 78 个影视站源，必出。
       - name: Build unsigned IPA（真果鉴 · 含全部站源）
