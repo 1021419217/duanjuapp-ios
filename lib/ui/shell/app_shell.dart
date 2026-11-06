@@ -7,13 +7,13 @@ import 'package:flutter/services.dart';
 import '../../download_converter.dart';
 import '../../download_overview.dart';
 import '../../follow_updater.dart';
+import '../../live/live_page.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
 import '../explore/explore_page.dart';
 import '../explore/source_actions.dart';
 import '../follow/follow_page.dart';
-import '../history/history_page.dart';
 import '../settings/settings_page.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
@@ -22,7 +22,7 @@ import '../widgets/source_bar.dart';
 enum AppTab {
   explore('发现', Icons.explore_outlined, Icons.explore),
   follow('追剧', Icons.bookmark_border_rounded, Icons.bookmark_rounded),
-  history('最近观看', Icons.schedule_outlined, Icons.schedule_rounded),
+  live('直播', Icons.live_tv_outlined, Icons.live_tv_rounded),
   settings('设置', Icons.settings_outlined, Icons.settings_rounded);
 
   const AppTab(this.label, this.icon, this.selectedIcon);
@@ -160,7 +160,11 @@ class _AppShellState extends State<AppShell> {
       entryFocus: _followEntry,
       onExitUp: _tabFocus[AppTab.follow.index].requestFocus,
     ),
-    AppTab.history => HistoryPage(store: widget.store),
+    AppTab.live => LivePage(
+      repository: sharedLiveRepository(),
+      store: liveStoreFor(widget.store),
+      bottomInset: AppScope.formFactorOf(context) == FormFactor.phone ? 88 : 0,
+    ),
     AppTab.settings => SettingsPage(store: widget.store),
   };
 

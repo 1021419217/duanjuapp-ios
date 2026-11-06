@@ -15,7 +15,6 @@ class SourceBar extends StatelessWidget {
     this.searchController,
     this.televisionLeading,
     this.actions = const [],
-    this.onShowAllCategories,
   });
   final String source;
   final void Function(BuildContext anchor) onSwitchSource;
@@ -24,9 +23,6 @@ class SourceBar extends StatelessWidget {
   final TextEditingController? searchController;
   final Widget? televisionLeading;
   final List<Widget> actions;
-
-  /// 手机端把「全部分类」也收进顶栏操作组，让 4 个入口排在同一行。
-  final void Function(BuildContext anchor)? onShowAllCategories;
 
   @override
   Widget build(BuildContext context) {
@@ -45,29 +41,23 @@ class SourceBar extends StatelessWidget {
       onPressed: onOpenSearch,
       accent: true,
     );
-    final showCategories = onShowAllCategories;
-    final showAll = showCategories == null
-        ? null
-        : Builder(
-            builder: (anchor) => BarButton(
-              icon: Icons.grid_view_rounded,
-              tooltip: '全部分类',
-              onPressed: () => showCategories(anchor),
-            ),
-          );
+    // 站源名与换源合为一体：整颗胶囊都可点击，不用再去右上角找地球图标。
+    final title = _SourceSwitcher(
+      source: source,
+      onSwitchSource: onSwitchSource,
+    );
     return switch (form) {
       FormFactor.phone => PageHeader(
         title: source,
-        // 4 个入口等距成组：站源 · 全部分类 · 直播 · 搜索（主操作反色）。
+        titleChild: title,
         actions: [
-          _actionRow([switcher, showAll, ...actions, search]),
+          _actionRow([...actions, search]),
         ],
       ),
       FormFactor.pad || FormFactor.window => PageHeader(
         title: source,
+        titleChild: title,
         actions: [
-          switcher,
-          const SizedBox(width: 4),
           SizedBox(
             width: MediaQuery.sizeOf(context).width >= 900 ? 320 : 240,
             child: SearchField(
@@ -80,6 +70,7 @@ class SourceBar extends StatelessWidget {
           ...actions,
         ],
       ),
+      // 电视端保留独立的地球按钮，适配遥控器焦点遍历。
       FormFactor.television => SizedBox(
         height: 48,
         child: Row(
@@ -100,7 +91,7 @@ class SourceBar extends StatelessWidget {
     };
   }
 
-  /// 手机端操作组：等距 8px 排列，主操作（搜索）在最右且反色强调。
+  /// 操作组等距 8px 排列，主操作（搜索）在最右且反色强调。
   Widget _actionRow(List<Widget?> items) {
     final children = items.whereType<Widget>().toList();
     return Row(
@@ -111,6 +102,103 @@ class SourceBar extends StatelessWidget {
           children[i],
         ],
       ],
+    );
+  }
+}
+
+/// 站源切换胶囊：主题色地球徽标 + 当前站源名 + 下拉箭头，
+/// 磨砂玻璃底与细白描边，和右侧反色搜索钮形成「一虚一实」的呼应。
+/// 整块都可点击，点开即为全部站源列表，换源一步到位。
+class _SourceSwitcher extends StatelessWidget {
+  const _SourceSwitcher({required this.source, required this.onSwitchSource});
+  final String source;
+  final void Function(BuildContext anchor) onSwitchSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    // 深色用白色磨砂玻璃，浅色换成淡墨色玻璃，保证两种主题下都清晰。
+    final ink = dark ? Colors.white : colors.onSurface;
+    final glass = dark ? Colors.white : colors.onSurface;
+    return Builder(
+      builder: (anchor) => Tooltip(
+        message: '切换站源',
+        child: Semantics(
+          button: true,
+          label: '当前站源 $source，点击切换',
+          child: Material(
+            color: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => onSwitchSource(anchor),
+              borderRadius: BorderRadius.circular(22),
+              splashColor: glass.withValues(alpha: 0.10),
+              child: Container(
+                height: 42,
+                padding: const EdgeInsets.fromLTRB(8, 0, 12, 0),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      glass.withValues(alpha: dark ? 0.12 : 0.07),
+                      glass.withValues(alpha: dark ? 0.05 : 0.03),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: glass.withValues(alpha: dark ? 0.16 : 0.12),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: colors.primary.withValues(alpha: 0.22),
+                      ),
+                      child: Icon(
+                        Icons.public_rounded,
+                        size: 17,
+                        color: colors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 132),
+                      child: Text(
+                        source,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                          color: ink,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: ink.withValues(alpha: 0.55),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

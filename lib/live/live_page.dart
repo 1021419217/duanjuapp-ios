@@ -25,10 +25,14 @@ class LivePage extends StatefulWidget {
     required this.repository,
     required this.store,
     this.greenMode = false,
+    this.bottomInset = 0,
   });
   final LiveRepository repository;
   final LiveStore store;
   final bool greenMode;
+
+  /// 作为底部导航 tab 使用时额外留出的底部空间，避免最后一排频道被导航条遮住。
+  final double bottomInset;
 
   @override
   State<LivePage> createState() => _LivePageState();
@@ -294,7 +298,7 @@ class _LivePageState extends State<LivePage> {
       );
     }
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 24 + bottomInset),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 220,
         mainAxisExtent: 64,

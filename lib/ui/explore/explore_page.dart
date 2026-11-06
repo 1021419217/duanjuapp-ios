@@ -1,9 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../explore_feed.dart';
-import '../../live/live_page.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
@@ -130,8 +127,8 @@ class ExplorePageState extends State<ExplorePage> {
           ],
           selected: explore.tab.id,
           onSelected: explore.select,
-          // 手机端「全部分类」已收进顶栏操作组，分类栏不再重复放一个。
-          onShowAll: form == FormFactor.phone ? null : _pickCategory,
+          // 「全部分类」固定在分类栏右端，与标签栏对齐，随时可点。
+          onShowAll: _pickCategory,
         ),
       );
       return Scaffold(
@@ -146,14 +143,8 @@ class ExplorePageState extends State<ExplorePage> {
                   onSwitchSource: (anchor) => pickSource(anchor, widget.store),
                   onOpenSearch: () => openSearch(context, widget.store, source),
                   onSearchSubmitted: (query) => _searchSubmitted(source, query),
-                  onShowAllCategories: _pickCategory,
                   actions: [
-                    BarButton(
-                      icon: Icons.live_tv_rounded,
-                      tooltip: '直播',
-                      onPressed: () =>
-                          unawaited(openLive(context, store: widget.store)),
-                    ),
+                    // 直播已移到底部导航作为独立 tab，顶栏不再重复放入口。
                     if (desktop)
                       BarButton(
                         icon: Icons.refresh_rounded,

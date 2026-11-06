@@ -71,19 +71,29 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
       (value, _) => !widget.options.any((option) => option.value == value),
     );
     final television = form == FormFactor.television;
-    final showAll = switch (widget.onShowAll) {
-      final onShowAll? when _overflows => Padding(
-        padding: EdgeInsets.only(right: television ? 10 : 0),
-        child: Builder(
-          builder: (anchor) => BarButton(
-            icon: Icons.grid_view_rounded,
-            tooltip: '全部分类',
-            onPressed: () => onShowAll(anchor),
-          ),
-        ),
-      ),
-      _ => null,
-    };
+    // 手机 / 平板端「全部分类」常驻右端并与标签栏垂直居中对齐，
+    // 不再依赖标签是否溢出——随时可点，位置固定，用起来才顺手。
+    // 电视端仍按遥控器习惯，仅在标签溢出时于左端显示。
+    Widget? showAll;
+    final onShowAll = widget.onShowAll;
+    if (onShowAll != null) {
+      if (television) {
+        if (_overflows) {
+          showAll = Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: Builder(
+              builder: (anchor) => BarButton(
+                icon: Icons.grid_view_rounded,
+                tooltip: '全部分类',
+                onPressed: () => onShowAll(anchor),
+              ),
+            ),
+          );
+        }
+      } else {
+        showAll = _AllCategoriesChip(onShowAll: onShowAll);
+      }
+    }
     return Container(
       height: height,
       decoration: BoxDecoration(
@@ -205,6 +215,71 @@ class _Tab extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 分类栏右端的「全部分类」入口：带图标的浅色胶囊 + 左侧细分隔线，
+/// 与标签文字同一套视觉语言，固定居右、垂直居中，随手就能点到。
+class _AllCategoriesChip extends StatelessWidget {
+  const _AllCategoriesChip({required this.onShowAll});
+  final void Function(BuildContext anchor) onShowAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Builder(
+      builder: (anchor) => Padding(
+        padding: const EdgeInsets.only(left: 4, right: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 1, height: 22, color: colors.outlineVariant),
+            const SizedBox(width: 10),
+            Tooltip(
+              message: '全部分类',
+              child: Material(
+                color: colors.surfaceContainerHigh.withValues(alpha: 0.9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => onShowAll(anchor),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colors.outlineVariant),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.grid_view_rounded,
+                          size: 15,
+                          color: colors.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '全部分类',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

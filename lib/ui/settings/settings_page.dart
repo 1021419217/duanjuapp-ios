@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../local_store.dart';
 import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
+import '../history/history_page.dart';
 import '../shell/app_shell.dart';
 import '../users/users_view.dart';
 import '../widgets/bar_button.dart';
@@ -132,6 +133,21 @@ class _SettingsPageState extends State<SettingsPage> {
     open: _open,
   );
 
+  /// 「最近观看」从底部导航收进设置页，做成顶部的独立快捷入口：
+  /// 与设置项同一套分组卡片，蓝色圆形图标统一视觉，点开是完整历史页。
+  Widget _historyShortcut() => GroupCard(
+    children: [
+      SettingsTile(
+        icon: Icons.schedule_rounded,
+        iconColor: const Color(0xFF32ADE6),
+        title: '最近观看',
+        subtitle: '继续播放没看完的剧集',
+        onTap: () =>
+            openPage<void>(context, (_) => HistoryPage(store: widget.store)),
+      ),
+    ],
+  );
+
   void _open(String title, WidgetBuilder body) {
     if (!settingsSplit(context)) {
       _openFullPage(context, title, body);
@@ -216,6 +232,11 @@ class _SettingsPageState extends State<SettingsPage> {
           // 底部留出悬浮胶囊导航的空间，避免最后一项被遮住。
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
           children: [
+            SectionHeader(
+              title: '快捷入口',
+              padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
+            ),
+            _historyShortcut(),
             for (var section = 0; section < sections.length; section++) ...[
               SectionHeader(
                 title: sections[section],
@@ -335,6 +356,10 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
           ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(left, 12, 12, 0),
+          child: _historyShortcut(),
         ),
         Expanded(
           child: ScrollConfiguration(
