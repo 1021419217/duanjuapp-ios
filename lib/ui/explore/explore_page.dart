@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../explore_feed.dart';
@@ -30,6 +32,8 @@ class ExplorePageState extends State<ExplorePage> {
   final _search = TextEditingController();
   final _tabsKey = GlobalKey();
   String _shown = '';
+  String? _swipeHint;
+  Timer? _hintTimer;
 
   @override
   void didChangeDependencies() {
@@ -39,6 +43,7 @@ class ExplorePageState extends State<ExplorePage> {
 
   @override
   void dispose() {
+    _hintTimer?.cancel();
     _explore?.dispose();
     _scroll.dispose();
     _search.dispose();
@@ -49,6 +54,86 @@ class ExplorePageState extends State<ExplorePage> {
     if (_scroll.hasClients) _scroll.jumpTo(0);
     await _explore?.refresh();
   }
+
+  /// 主屏左右快滑切换相邻分类：左滑下一个、右滑上一个，到头即停。
+  /// 分类栏会自动滚动到新选中的标签，内容由 ExploreFeed 重新加载。
+  void _switchTabBy(ExploreFeed explore, int delta) {
+    final tabs = explore.tabs;
+    if (tabs.length < 2) return;
+    final index = tabs.indexWhere((tab) => tab.id == explore.tab.id);
+    if (index < 0) return;
+    final next = index + delta;
+    if (next < 0 || next >= tabs.length) return;
+    explore.select(tabs[next].id);
+    _showTabHint(tabs[next].name);
+  }
+
+  void _showTabHint(String name) {
+    _hintTimer?.cancel();
+    setState(() => _swipeHint = name);
+    _hintTimer = Timer(const Duration(milliseconds: 1100), () {
+      if (mounted) setState(() => _swipeHint = null);
+    });
+  }
+
+  /// 内容区的滑动层：横向手势切分类，中央上方浮出当前分类的玻璃提示。
+  /// 用 translucent 命中，不拦截卡片点击与网格的垂直滚动；电视端靠遥控器
+  /// 方向键，不叠加手势。Hero 轮播自身的 PageView 会优先消费横向滑动，
+  /// 所以在轮播上仍是翻海报，不会误切分类。
+  Widget _swipeLayer(ExploreFeed explore, Widget child) {
+    if (AppScope.formFactorOf(context) == FormFactor.television) return child;
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity.abs() < 200) return;
+        _switchTabBy(explore, velocity < 0 ? 1 : -1);
+      },
+      behavior: HitTestBehavior.translucent,
+      child: Stack(
+        children: [
+          Positioned.fill(child: child),
+          Positioned(top: 12, left: 0, right: 0, child: _swipeHintBadge()),
+        ],
+      ),
+    );
+  }
+
+  Widget _swipeHintBadge() => IgnorePointer(
+    child: Center(
+      child: AnimatedOpacity(
+        opacity: _swipeHint == null ? 0 : 1,
+        duration: const Duration(milliseconds: 180),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.62),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: 15,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                _swipeHint ?? '',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 
   void _open(Drama drama) => openPage<void>(
     context,
@@ -154,7 +239,12 @@ class ExplorePageState extends State<ExplorePage> {
                   ],
                 ),
               if (!television || explore.feed!.items.isEmpty) tabs,
-              Expanded(child: _content(explore, inset, television, tabs)),
+              Expanded(
+                child: _swipeLayer(
+                  explore,
+                  _content(explore, inset, television, tabs),
+                ),
+              ),
             ],
           ),
         ),

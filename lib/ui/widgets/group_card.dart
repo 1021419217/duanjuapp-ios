@@ -72,24 +72,30 @@ class SettingsTile extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: iconColor ??
-                      colors.primary.withValues(alpha: 0.85),
+                  color: iconColor ?? colors.primary.withValues(alpha: 0.85),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 19, color: Colors.white),
               ),
         title: Text(
           title,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+            color: colors.onSurface,
+          ),
         ),
         subtitle: subtitle == null
             ? null
             : Text(
                 subtitle!,
                 style: TextStyle(
-                  fontSize: 11,
-                  height: 1.35,
-                  color: colors.onSurfaceVariant,
+                  fontSize: 12.5,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.1,
+                  color: colors.onSurfaceVariant.withValues(alpha: 0.95),
                 ),
               ),
         trailing:
@@ -104,7 +110,10 @@ class SettingsTile extends StatelessWidget {
                         Text(
                           text,
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: colors.onSurfaceVariant),
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colors.onSurfaceVariant,
+                              ),
                         ),
                       if (onTap != null)
                         Icon(

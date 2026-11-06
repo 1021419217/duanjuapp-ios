@@ -218,8 +218,52 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      settingsSplit(context) ? _split(context) : _phone(context);
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final text = theme.textTheme;
+    // 设置页统一字体风格：原来大量文字继承 w400 细体且字号偏小，显得单薄。
+    // 在这里整体加粗、放大一档，分组标题、条目、说明文字形成一致层级，
+    // 子页面与各分组详情都会自动继承这套字重。
+    final scoped = theme.copyWith(
+      textTheme: text.copyWith(
+        bodyLarge: text.bodyLarge?.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+        ),
+        bodyMedium: text.bodyMedium?.copyWith(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
+        ),
+        bodySmall: text.bodySmall?.copyWith(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+        ),
+        titleMedium: text.titleMedium?.copyWith(
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+        ),
+        titleSmall: text.titleSmall?.copyWith(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
+        labelLarge: text.labelLarge?.copyWith(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
+        labelMedium: text.labelMedium?.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+    return Theme(
+      data: scoped,
+      child: settingsSplit(context) ? _split(context) : _phone(context),
+    );
+  }
 
   Widget _phone(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('设置')),
@@ -490,7 +534,8 @@ class _DetailHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontSize: 22,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
                 ),
               ),
             ),
@@ -526,8 +571,9 @@ class _GroupItem extends StatelessWidget {
       focusNode: focusNode,
       selected: selected,
       textStyle: theme.textTheme.titleSmall?.copyWith(
-        fontSize: 15,
-        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        fontSize: 16,
+        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+        letterSpacing: -0.2,
         color: theme.colorScheme.onSurface,
       ),
       child: InkWell(
