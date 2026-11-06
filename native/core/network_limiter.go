@@ -195,7 +195,15 @@ func (limiter *requestLimiter) acquire(ctx context.Context, request *http.Reques
 }
 
 func (limiter *requestLimiter) observe(request *http.Request, response *http.Response) {
-	if response.StatusCode != http.StatusForbidden && response.StatusCode != http.StatusTooManyRequests && !strings.EqualFold(response.Header.Get("Cf-Mitigated"), "challenge") {
+	// 403 是「这个请求不被允许」（鉴权 / 防盗链 / 单条播放线路失效），属于
+	// 永久性拒绝，重试 60 秒后通常仍是 403；把它当成限流去冻结整个域名，
+	// 会连累同域名下的其他线路，也会让「重试」和「自动切换线路」在退避期内
+	// 直接被 acquire 挡下、请求根本发不出去（表现为一直转圈 / 按钮没反应）。
+	// 只有真正的限流（429）与 Cloudflare 浏览器验证（403 + Cf-Mitigated:
+	// challenge）才需要退避；站点自身的普通 403 交给上层立即重试或换线路。
+	challenge := strings.EqualFold(response.Header.Get("Cf-Mitigated"), "challenge")
+	if response.StatusCode != http.StatusTooManyRequests &&
+		!(response.StatusCode == http.StatusForbidden && challenge) {
 		return
 	}
 	limiter.observeBlock(request, response)

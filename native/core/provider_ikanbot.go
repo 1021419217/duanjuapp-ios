@@ -827,7 +827,19 @@ func (d *Downloader) resolveIkanbotMedia(ctx context.Context, task Task) (provid
 	media := options[0]
 	media.Variants = options
 	if strings.HasSuffix(strings.ToLower(media.URL), ".m3u8") {
-		return d.prepareWebProviderMedia(ctx, media, "爱看机器人")
+		prepared, err := d.prepareWebProviderMedia(ctx, media, "爱看机器人")
+		if err == nil {
+			return prepared, nil
+		}
+		// 主线路被源站拒绝（403 / 404 / 播放列表失效）时，自动改用同一集的
+		// 其他线路：爱看机器人是多线路聚合源，单条线路失效不该让整集播不了。
+		// 备选线路继续保留在列表里，播放器仍可手动逐条切换。
+		probe := media
+		probe.Variants = options[1:]
+		if fallback, ok := d.prepareWebProviderRouteFallback(ctx, probe, "爱看机器人"); ok {
+			return fallback, nil
+		}
+		return providerMedia{}, err
 	}
 	return media, nil
 }
