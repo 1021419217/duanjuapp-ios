@@ -11,6 +11,7 @@ import '../downloads/download_picker_page.dart';
 import '../player/playback_handle.dart';
 import '../player/playback_page.dart';
 import '../shell/app_shell.dart';
+import '../widgets/bar_button.dart';
 import '../widgets/cover_backdrop.dart';
 import '../widgets/cover_image.dart';
 import '../widgets/focus_ring.dart';
@@ -391,13 +392,23 @@ class _DetailPageState extends State<DetailPage> {
             ? colors.surfaceContainer
             : Colors.transparent,
       ),
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: BarButton(
+          icon: Icons.arrow_back_ios_new_rounded,
+          tooltip: '返回',
+          onPressed: () {
+            Navigator.of(context).maybePop();
+          },
+        ),
+      ),
       actions: [
-        IconButton(
+        BarButton(
+          icon: Icons.refresh_rounded,
           tooltip: '更新剧集信息',
           onPressed: details.loading ? null : _refresh,
-          icon: const Icon(Icons.refresh_rounded),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 12),
       ],
     );
   }
@@ -1403,7 +1414,7 @@ class _GroupChip extends StatelessWidget {
     return FocusRing(
       radius: m.chipRadius,
       child: selected
-          ? FilledButton.tonal(
+          ? FilledButton(
               focusNode: focusNode,
               onPressed: onPressed,
               style: FilledButton.styleFrom(
@@ -1464,7 +1475,9 @@ class _EpisodeCell extends StatelessWidget {
         label: '第 ${episode.number} 集${episode.vip ? '，VIP' : ''}',
         excludeSemantics: true,
         child: Material(
-          color: current ? colors.primaryContainer : colors.surfaceContainer,
+          color: current
+              ? Colors.white
+              : Colors.white.withValues(alpha: dark ? 0.08 : 0.06),
           borderRadius: radius,
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -1484,10 +1497,10 @@ class _EpisodeCell extends StatelessWidget {
                           ? FontWeight.w400
                           : FontWeight.w600,
                       color: current
-                          ? colors.onPrimaryContainer
+                          ? const Color(0xFF111114)
                           : watched
                           ? colors.onSurfaceVariant
-                          : colors.onSurface,
+                          : Colors.white,
                     ),
                   ),
                 ),

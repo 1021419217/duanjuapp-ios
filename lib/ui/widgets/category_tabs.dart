@@ -183,10 +183,8 @@ class _Tab extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: fontSize,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected
-                        ? colors.onSurface
-                        : colors.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    color: selected ? Colors.white : colors.onSurfaceVariant,
                   ),
                 ),
                 Positioned(
@@ -197,7 +195,7 @@ class _Tab extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     decoration: BoxDecoration(
-                      color: selected ? colors.primary : Colors.transparent,
+                      color: selected ? Colors.white : Colors.transparent,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(3),
                       ),

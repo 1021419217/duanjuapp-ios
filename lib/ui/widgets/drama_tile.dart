@@ -6,7 +6,27 @@ import '../app_scope.dart';
 import 'cover_image.dart';
 import 'focus_ring.dart';
 
-const _coverRadius = 16.0;
+const _coverRadius = 12.0;
+
+/// 海报右上角的半透明「…」角标（视觉统一用；长按卡片仍是真正的更多操作）。
+class _MoreBadge extends StatelessWidget {
+  const _MoreBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 24,
+    height: 24,
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.42),
+      shape: BoxShape.circle,
+    ),
+    child: const Icon(
+      Icons.more_horiz_rounded,
+      size: 15,
+      color: Colors.white,
+    ),
+  );
+}
 
 class _PosterButton extends StatefulWidget {
   const _PosterButton({
@@ -18,6 +38,7 @@ class _PosterButton extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.checked,
+    this.showMore = true,
   });
   final Widget cover;
   final List<Widget> caption;
@@ -27,6 +48,7 @@ class _PosterButton extends StatefulWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final bool? checked;
+  final bool showMore;
 
   @override
   State<_PosterButton> createState() => _PosterButtonState();
@@ -64,6 +86,12 @@ class _PosterButtonState extends State<_PosterButton> {
                 fit: StackFit.expand,
                 children: [
                   widget.cover,
+                  if (widget.showMore)
+                    const Positioned(
+                      right: 6,
+                      top: 6,
+                      child: IgnorePointer(child: _MoreBadge()),
+                    ),
                   IgnorePointer(
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 120),
@@ -214,6 +242,7 @@ class ProgressPoster extends StatelessWidget {
     return SizedBox(
       width: width,
       child: _PosterButton(
+        showMore: false,
         cover: Stack(
           fit: StackFit.expand,
           children: [

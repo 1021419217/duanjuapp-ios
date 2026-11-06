@@ -13,7 +13,8 @@ import '../app_scope.dart';
 import '../explore/explore_page.dart';
 import '../explore/source_actions.dart';
 import '../follow/follow_page.dart';
-import '../mine/mine_page.dart';
+import '../history/history_page.dart';
+import '../settings/settings_page.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/source_bar.dart';
@@ -21,7 +22,8 @@ import '../widgets/source_bar.dart';
 enum AppTab {
   explore('发现', Icons.explore_outlined, Icons.explore),
   follow('追剧', Icons.bookmark_border_rounded, Icons.bookmark_rounded),
-  mine('我的', Icons.person_outline_rounded, Icons.person_rounded);
+  history('最近观看', Icons.schedule_outlined, Icons.schedule_rounded),
+  settings('设置', Icons.settings_outlined, Icons.settings_rounded);
 
   const AppTab(this.label, this.icon, this.selectedIcon);
   final String label;
@@ -158,14 +160,14 @@ class _AppShellState extends State<AppShell> {
       entryFocus: _followEntry,
       onExitUp: _tabFocus[AppTab.follow.index].requestFocus,
     ),
-    AppTab.mine => MinePage(
-      store: widget.store,
-      downloads: _downloads!,
-      converter: _converter!,
-      entryFocus: _mineEntry,
-      onExitUp: _tabFocus[AppTab.mine.index].requestFocus,
-    ),
+    AppTab.history => HistoryPage(store: widget.store),
+    AppTab.settings => SettingsPage(store: widget.store),
   };
+
+  void _openSearch() {
+    final source = SourceSite.byId(widget.store.source);
+    openSearch(context, widget.store, source);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -204,28 +206,18 @@ class _AppShellState extends State<AppShell> {
       child: switch (AppScope.formFactorOf(context)) {
         FormFactor.phone => Scaffold(
           extendBody: true,
-          body: pages,
-          bottomNavigationBar: covered
-              ? null
-              : ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                    child: NavigationBar(
-                      selectedIndex: _tab.index,
-                      onDestinationSelected: (index) =>
-                          _select(AppTab.values[index]),
-                      destinations: [
-                        for (final tab in AppTab.values)
-                          NavigationDestination(
-                            key: ValueKey('nav-${tab.name}'),
-                            icon: _badged(tab, Icon(tab.icon)),
-                            selectedIcon: _badged(tab, Icon(tab.selectedIcon)),
-                            label: tab.label,
-                          ),
-                      ],
-                    ),
-                  ),
+          body: Stack(
+            children: [
+              Positioned.fill(child: pages),
+              if (!covered)
+                _FloatingDock(
+                  selected: _tab,
+                  onSelect: _select,
+                  badged: _badged,
+                  onSearch: _openSearch,
                 ),
+            ],
+          ),
         ),
         FormFactor.pad || FormFactor.window => _wide(pages),
         FormFactor.television => Scaffold(
@@ -249,8 +241,8 @@ class _AppShellState extends State<AppShell> {
                       onKeyEvent: (_, event) {
                         final entry = switch (_tab) {
                           AppTab.follow => _followEntry,
-                          AppTab.mine => _mineEntry,
                           AppTab.explore => null,
+                          _ => null,
                         };
                         if (event is KeyUpEvent ||
                             event.logicalKey != LogicalKeyboardKey.arrowDown ||
@@ -272,7 +264,7 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _badged(AppTab tab, Widget icon) => tab == AppTab.mine
+  Widget _badged(AppTab tab, Widget icon) => tab == AppTab.settings
       ? _DownloadBadge(downloads: _downloads!, child: icon)
       : icon;
 
@@ -584,4 +576,132 @@ class _TelevisionTab extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 悬浮毛玻璃胶囊导航：4 个 tab 装在一条半透明胶囊里，右侧是独立的
+/// 圆形搜索按钮。内容从下方滚过时会被高斯模糊透出。
+class _FloatingDock extends StatelessWidget {
+  const _FloatingDock({
+    required this.selected,
+    required this.onSelect,
+    required this.badged,
+    required this.onSearch,
+  });
+  final AppTab selected;
+  final ValueChanged<AppTab> onSelect;
+  final Widget Function(AppTab tab, Widget icon) badged;
+  final VoidCallback onSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    return Positioned(
+      left: 14,
+      right: 14,
+      bottom: bottom + 16,
+      child: Row(
+        spacing: 10,
+        children: [
+          Expanded(child: _bar(context)),
+          _search(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _bar(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(32),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+      child: Container(
+        height: 62,
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: const Color(0xB22C2C32),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: Row(
+          children: [
+            for (final tab in AppTab.values)
+              Expanded(child: _item(context, tab)),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _item(BuildContext context, AppTab tab) {
+    final active = tab == selected;
+    final color = active ? Colors.white : const Color(0xFF8C8C95);
+    return Semantics(
+      selected: active,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        child: InkWell(
+          key: ValueKey('nav-${tab.name}'),
+          onTap: () => onSelect(tab),
+          borderRadius: BorderRadius.circular(27),
+          child: Container(
+            decoration: BoxDecoration(
+              color: active
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(27),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                badged(
+                  tab,
+                  Icon(
+                    active ? tab.selectedIcon : tab.icon,
+                    size: 18,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  tab.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    height: 1.1,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _search(BuildContext context) => ClipOval(
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+      child: Material(
+        color: const Color(0xB234343A),
+        shape: CircleBorder(
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: InkWell(
+          onTap: onSearch,
+          customBorder: const CircleBorder(),
+          child: const SizedBox(
+            width: 62,
+            height: 62,
+            child: Icon(
+              Icons.search_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }

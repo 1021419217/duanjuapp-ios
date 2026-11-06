@@ -290,6 +290,7 @@ class _FollowPageState extends State<FollowPage> {
             if (selection == null)
               PageHeader(
                 title: '追剧',
+                count: '${view.shown.length}',
                 actions: [_editButtonFor(view, icon: false)],
               )
             else
@@ -557,7 +558,11 @@ class _FollowPageState extends State<FollowPage> {
             ],
           SliverPadding(
             padding: EdgeInsets.only(
-              bottom: AppScope.of(context).television ? 27 : 32,
+              bottom: AppScope.of(context).television
+                  ? 27
+                  : (AppScope.formFactorOf(context) == FormFactor.phone
+                      ? 100
+                      : 32),
             ),
           ),
         ],

@@ -288,7 +288,22 @@ class _HistoryPageState extends State<HistoryPage> {
     return Scaffold(
       appBar: selection == null
           ? AppBar(
-              title: const Text('观看记录'),
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const Text('最近观看'),
+                  Text(
+                    ' · ${view.history.length}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF8E8E93),
+                    ),
+                  ),
+                ],
+              ),
               actions: [
                 ..._browseActions(view, icons: false),
                 const SizedBox(width: 8),
@@ -513,7 +528,11 @@ class _HistoryPageState extends State<HistoryPage> {
             ],
           SliverPadding(
             padding: EdgeInsets.only(
-              bottom: AppScope.of(context).television ? 27 : 32,
+              bottom: AppScope.of(context).television
+                  ? 27
+                  : (AppScope.formFactorOf(context) == FormFactor.phone
+                      ? 100
+                      : 32),
             ),
           ),
         ],

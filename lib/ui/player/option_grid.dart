@@ -65,31 +65,42 @@ class OptionGrid<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    Widget cell(T value, double? width) => InkWell(
-      borderRadius: BorderRadius.circular(8),
-      hoverColor: Colors.white.withValues(alpha: .14),
-      onTap: () => onSelected(value),
-      child: Container(
-        height: OptionGridMetrics.rowHeight,
-        width: width,
-        constraints: BoxConstraints(
-          minWidth: width ?? OptionGridMetrics.minWidth,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        alignment: Alignment.center,
-        child: Text(
-          label(value),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: value == selected ? FontWeight.w700 : FontWeight.w500,
-            color: value == selected ? colors.primary : Colors.white,
+    Widget cell(T value, double? width) {
+      final active = value == selected;
+      return InkWell(
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: Colors.white.withValues(alpha: .14),
+        onTap: () => onSelected(value),
+        child: Container(
+          height: OptionGridMetrics.rowHeight,
+          width: width,
+          constraints: BoxConstraints(
+            minWidth: width ?? OptionGridMetrics.minWidth,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: active ? 0 : 0.06),
+            ),
+          ),
+          child: Text(
+            label(value),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+              color: active ? const Color(0xFF111114) : Colors.white,
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
 
     if (plan.singleColumn) {
       // IntrinsicWidth 给出一份有限的紧约束，Column 才能安全地按内容撑开。

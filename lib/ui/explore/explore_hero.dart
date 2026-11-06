@@ -126,6 +126,10 @@ class ExploreHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      // 手机端用沉浸式大图：海报铺满、底部压暗、超粗标题 + 分页点。
+      if (AppScope.formFactorOf(context) == FormFactor.phone) {
+        return _phoneHero(context);
+      }
       final base = _metrics(context);
       final k = math.max(
         1.0,
@@ -134,6 +138,147 @@ class ExploreHero extends StatelessWidget {
       );
       return _hero(context, _scale(base, k), k);
     },
+  );
+
+  Widget _phoneHero(BuildContext context) => Semantics(
+    container: true,
+    label: kicker,
+    child: GestureDetector(
+      onTap: onPlay,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: SizedBox(
+          height: 356,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: _shade),
+              CoverBackdrop(
+                drama: drama,
+                sigma: 22,
+                overlay: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.42, 1.0],
+                  colors: [
+                    Color(0x1A000000),
+                    Color(0x880A0A0C),
+                    Color(0xFF0A0A0C),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.14),
+                        ),
+                      ),
+                      child: Text(
+                        kicker,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      drama.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                        letterSpacing: -0.6,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 13,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xB21A1A20),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.14),
+                        ),
+                      ),
+                      child: Text(
+                        meta,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                        for (var i = 0; i < 4; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5),
+                            child: Container(
+                              width: 5,
+                              height: 5,
+                              decoration: const BoxDecoration(
+                                color: Color(0x55FFFFFF),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Text(
+                              action,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.play_arrow_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 
   Widget _hero(BuildContext context, _HeroMetrics metrics, double k) {

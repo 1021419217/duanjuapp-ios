@@ -15,6 +15,18 @@ import 'settings_sections.dart';
 
 typedef _Subpage = ({String title, WidgetBuilder body});
 
+// 设置项圆形图标的低饱和彩色，仅作视觉区分，不参与主题强调色。
+const _tileColors = <Color>[
+  Color(0xFFB06AF7),
+  Color(0xFFFF9F0A),
+  Color(0xFF63636B),
+  Color(0xFF32ADE6),
+  Color(0xFFB06AF7),
+  Color(0xFFFF9F0A),
+  Color(0xFF63636B),
+  Color(0xFF32ADE6),
+];
+
 void openUsers(BuildContext context, LocalStore store) => openPage<void>(
   context,
   (context) => settingsSplit(context)
@@ -197,22 +209,38 @@ class _SettingsPageState extends State<SettingsPage> {
     appBar: AppBar(title: const Text('设置')),
     body: ListenableBuilder(
       listenable: widget.store,
-      builder: (context, _) => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          GroupCard(
-            children: [
-              for (final group in SettingsGroup.values)
-                SettingsTile(
-                  icon: group.icon,
-                  title: group.label,
-                  subtitle: _summary(group),
-                  onTap: () => _openGroup(group),
-                ),
+      builder: (context, _) {
+        final groups = SettingsGroup.values;
+        const sections = ['内容与站源', '设备与数据', '界面与关于'];
+        return ListView(
+          // 底部留出悬浮胶囊导航的空间，避免最后一项被遮住。
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          children: [
+            for (var section = 0; section < sections.length; section++) ...[
+              SectionHeader(
+                title: sections[section],
+                padding: const EdgeInsets.fromLTRB(4, 18, 8, 8),
+              ),
+              GroupCard(
+                children: [
+                  for (
+                    var i = section * 3;
+                    i < groups.length && i < section * 3 + 3;
+                    i++
+                  )
+                    SettingsTile(
+                      icon: groups[i].icon,
+                      iconColor: _tileColors[i % _tileColors.length],
+                      title: groups[i].label,
+                      subtitle: _summary(groups[i]),
+                      onTap: () => _openGroup(groups[i]),
+                    ),
+                ],
+              ),
             ],
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     ),
   );
 

@@ -2,17 +2,36 @@ import 'package:flutter/material.dart';
 
 import 'focus_ring.dart';
 
+/// 深灰分组圆角卡：项目之间用极细分隔线，卡片带半透明磨砂底色与细描边。
 class GroupCard extends StatelessWidget {
   const GroupCard({super.key, required this.children});
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surfaceContainer,
-    borderRadius: BorderRadius.circular(20),
-    clipBehavior: Clip.antiAlias,
-    child: Column(children: children),
-  );
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Divider(height: 1, color: colors.outlineVariant),
+              ),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class SettingsTile extends StatelessWidget {
@@ -25,6 +44,7 @@ class SettingsTile extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.enabled = true,
+    this.iconColor,
   });
   final String title;
   final String? subtitle;
@@ -33,6 +53,9 @@ class SettingsTile extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool enabled;
+
+  /// 圆形图标底色；不传时用主题色的低饱和版本。
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -46,16 +69,29 @@ class SettingsTile extends StatelessWidget {
         leading: icon == null
             ? null
             : Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: colors.secondaryContainer,
+                  color: iconColor ??
+                      colors.primary.withValues(alpha: 0.85),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 22, color: colors.onSecondaryContainer),
+                child: Icon(icon, size: 19, color: Colors.white),
               ),
-        title: Text(title),
-        subtitle: subtitle == null ? null : Text(subtitle!),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle!,
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.35,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
         trailing:
             trailing ??
             (value == null && onTap == null
@@ -64,15 +100,16 @@ class SettingsTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     spacing: 4,
                     children: [
-                      if (value case final value?)
+                      if (value case final text?)
                         Text(
-                          value,
+                          text,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(color: colors.onSurfaceVariant),
                         ),
                       if (onTap != null)
                         Icon(
                           Icons.chevron_right_rounded,
+                          size: 18,
                           color: colors.onSurfaceVariant,
                         ),
                     ],
@@ -111,7 +148,7 @@ class SectionHeader extends StatelessWidget {
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),

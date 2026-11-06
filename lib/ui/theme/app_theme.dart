@@ -60,7 +60,7 @@ abstract final class AppTheme {
             surfaceContainerHighest: const Color(0xFFE0DEE5),
           );
 
-    const radius = 20.0;
+    const radius = 18.0;
     final background = dark
         ? const Color(0xFF0A0A0C)
         : scheme.surfaceContainerLowest;
@@ -113,13 +113,56 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
       ),
+      // 这版设计不用彩色强调色：主按钮一律「白底黑字胶囊」，
+      // 选中态同样靠反色，而不是主题色高亮。
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: dark ? const Color(0xFFF2F2F5) : scheme.primary,
+          foregroundColor: dark ? const Color(0xFF111114) : scheme.onPrimary,
+          disabledBackgroundColor: Colors.white.withValues(alpha: 0.16),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.45),
+          shape: const StadiumBorder(),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: dark ? Colors.white : scheme.primary,
+        linearTrackColor: Colors.white.withValues(alpha: 0.22),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: scheme.onSurfaceVariant,
+        textColor: scheme.onSurface,
+        minVerticalPadding: 8,
+      ),
     );
 
     final titled = theme.copyWith(
+      textTheme: theme.textTheme.copyWith(
+        headlineMedium: theme.textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+        ),
+        headlineSmall: theme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+        ),
+        titleLarge: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+        titleMedium: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
       appBarTheme: theme.appBarTheme.copyWith(
         titleTextStyle: theme.textTheme.titleLarge?.copyWith(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
+          fontSize: 21,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
           color: scheme.onSurface,
         ),
       ),
