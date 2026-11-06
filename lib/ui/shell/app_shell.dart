@@ -201,17 +201,28 @@ class _AppShellState extends State<AppShell> {
       child: switch (AppScope.formFactorOf(context)) {
         FormFactor.phone => Scaffold(
           extendBody: true,
-          body: Stack(
-            children: [
-              Positioned.fill(child: pages),
-              if (!covered)
-                _FloatingDock(
-                  selected: _tab,
-                  onSelect: _select,
-                  badged: _badged,
+          body: pages,
+          bottomNavigationBar: covered
+              ? null
+              : ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: NavigationBar(
+                      selectedIndex: _tab.index,
+                      onDestinationSelected: (index) =>
+                          _select(AppTab.values[index]),
+                      destinations: [
+                        for (final tab in AppTab.values)
+                          NavigationDestination(
+                            key: ValueKey('nav-${tab.name}'),
+                            icon: _badged(tab, Icon(tab.icon)),
+                            selectedIcon: _badged(tab, Icon(tab.selectedIcon)),
+                            label: tab.label,
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-            ],
-          ),
         ),
         FormFactor.pad || FormFactor.window => _wide(pages),
         FormFactor.television => Scaffold(
@@ -570,100 +581,4 @@ class _TelevisionTab extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 悬浮毛玻璃胶囊导航：4 个 tab 均分装在一条半透明胶囊里，居中铺满。
-/// 搜索统一由顶部栏提供，这里不再单独放圆形搜索按钮。
-class _FloatingDock extends StatelessWidget {
-  const _FloatingDock({
-    required this.selected,
-    required this.onSelect,
-    required this.badged,
-  });
-  final AppTab selected;
-  final ValueChanged<AppTab> onSelect;
-  final Widget Function(AppTab tab, Widget icon) badged;
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom;
-    return Positioned(
-      left: 10,
-      right: 10,
-      bottom: bottom + 6,
-      child: _bar(context),
-    );
-  }
-
-  Widget _bar(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(36),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-      child: Container(
-        height: 76,
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: const Color(0xB22C2C32),
-          borderRadius: BorderRadius.circular(36),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Row(
-          children: [
-            for (final tab in AppTab.values)
-              Expanded(child: _item(context, tab)),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  Widget _item(BuildContext context, AppTab tab) {
-    final active = tab == selected;
-    final color = active ? Colors.white : const Color(0xFF8C8C95);
-    return Semantics(
-      selected: active,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: InkWell(
-          key: ValueKey('nav-${tab.name}'),
-          onTap: () => onSelect(tab),
-          borderRadius: BorderRadius.circular(32),
-          child: Container(
-            decoration: BoxDecoration(
-              color: active
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(32),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                badged(
-                  tab,
-                  Icon(
-                    active ? tab.selectedIcon : tab.icon,
-                    size: 23,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tab.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    height: 1.15,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
 }

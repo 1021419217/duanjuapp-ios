@@ -55,8 +55,13 @@ class ExploreFeed extends ChangeNotifier {
         .firstOrNull;
   }
 
-  Drama? get featured =>
-      recommending && resume == null ? _feed?.items.firstOrNull : null;
+  // 轮播对所有站源一致可用：处于首页默认 tab（推荐或「全部」，取决于
+  // 站源是否声明 recommends）、且没有「继续观看」时，取列表首部作为 Hero。
+  // 早期只认「推荐」tab，而推荐 tab 仅部分站源会声明，导致换源后轮播
+  // 时有时无、体验割裂。这里限定在首页 tab，避免各分类/榜单丢掉第一条。
+  Drama? get featured => _tab.id == tabs.firstOrNull?.id && resume == null
+      ? _feed?.items.firstOrNull
+      : null;
 
   List<Drama> get items {
     final items = _feed?.items ?? const <Drama>[];
