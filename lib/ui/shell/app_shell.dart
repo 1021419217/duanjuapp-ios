@@ -588,23 +588,23 @@ class _FloatingDock extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).padding.bottom;
     return Positioned(
-      left: 14,
-      right: 14,
-      bottom: bottom + 16,
+      left: 10,
+      right: 10,
+      bottom: bottom + 6,
       child: _bar(context),
     );
   }
 
   Widget _bar(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(32),
+    borderRadius: BorderRadius.circular(36),
     child: BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
       child: Container(
-        height: 62,
-        padding: const EdgeInsets.all(5),
+        height: 76,
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: const Color(0xB22C2C32),
-          borderRadius: BorderRadius.circular(32),
+          borderRadius: BorderRadius.circular(36),
           border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         ),
         child: Row(
@@ -623,17 +623,17 @@ class _FloatingDock extends StatelessWidget {
     return Semantics(
       selected: active,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: InkWell(
           key: ValueKey('nav-${tab.name}'),
           onTap: () => onSelect(tab),
-          borderRadius: BorderRadius.circular(27),
+          borderRadius: BorderRadius.circular(32),
           child: Container(
             decoration: BoxDecoration(
               color: active
                   ? Colors.white.withValues(alpha: 0.15)
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(27),
+              borderRadius: BorderRadius.circular(32),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -642,18 +642,18 @@ class _FloatingDock extends StatelessWidget {
                   tab,
                   Icon(
                     active ? tab.selectedIcon : tab.icon,
-                    size: 18,
+                    size: 23,
                     color: color,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   tab.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 9,
-                    height: 1.1,
+                    fontSize: 11,
+                    height: 1.15,
                     fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                     color: color,
                   ),
