@@ -130,7 +130,8 @@ class ExplorePageState extends State<ExplorePage> {
           ],
           selected: explore.tab.id,
           onSelected: explore.select,
-          onShowAll: _pickCategory,
+          // 手机端「全部分类」已收进顶栏操作组，分类栏不再重复放一个。
+          onShowAll: form == FormFactor.phone ? null : _pickCategory,
         ),
       );
       return Scaffold(
@@ -145,6 +146,7 @@ class ExplorePageState extends State<ExplorePage> {
                   onSwitchSource: (anchor) => pickSource(anchor, widget.store),
                   onOpenSearch: () => openSearch(context, widget.store, source),
                   onSearchSubmitted: (query) => _searchSubmitted(source, query),
+                  onShowAllCategories: _pickCategory,
                   actions: [
                     BarButton(
                       icon: Icons.live_tv_rounded,
@@ -261,10 +263,8 @@ class ExplorePageState extends State<ExplorePage> {
   Widget? _hero(ExploreFeed explore) {
     final items = explore.items;
     // 轮播取当前分类列表的前几部，每部都是真实剧集，可左右滑动查看。
-    List<Drama> slides(Drama lead) => [
-      lead,
-      ...items.where((d) => d.id != lead.id),
-    ].take(6).toList();
+    List<Drama> slides(Drama lead) =>
+        [lead, ...items.where((d) => d.id != lead.id)].take(6).toList();
     if (explore.resume case final entry?) {
       final drama = entry.drama;
       final total = drama.episodes;

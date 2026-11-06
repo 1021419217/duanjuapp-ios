@@ -15,6 +15,7 @@ class SourceBar extends StatelessWidget {
     this.searchController,
     this.televisionLeading,
     this.actions = const [],
+    this.onShowAllCategories,
   });
   final String source;
   final void Function(BuildContext anchor) onSwitchSource;
@@ -23,6 +24,9 @@ class SourceBar extends StatelessWidget {
   final TextEditingController? searchController;
   final Widget? televisionLeading;
   final List<Widget> actions;
+
+  /// 手机端把「全部分类」也收进顶栏操作组，让 4 个入口排在同一行。
+  final void Function(BuildContext anchor)? onShowAllCategories;
 
   @override
   Widget build(BuildContext context) {
@@ -39,11 +43,25 @@ class SourceBar extends StatelessWidget {
       icon: Icons.search_rounded,
       tooltip: hint,
       onPressed: onOpenSearch,
+      accent: true,
     );
+    final showCategories = onShowAllCategories;
+    final showAll = showCategories == null
+        ? null
+        : Builder(
+            builder: (anchor) => BarButton(
+              icon: Icons.grid_view_rounded,
+              tooltip: '全部分类',
+              onPressed: () => showCategories(anchor),
+            ),
+          );
     return switch (form) {
       FormFactor.phone => PageHeader(
         title: source,
-        actions: [switcher, search, ...actions],
+        // 4 个入口等距成组：站源 · 全部分类 · 直播 · 搜索（主操作反色）。
+        actions: [
+          _actionRow([switcher, showAll, ...actions, search]),
+        ],
       ),
       FormFactor.pad || FormFactor.window => PageHeader(
         title: source,
@@ -80,5 +98,19 @@ class SourceBar extends StatelessWidget {
         ),
       ),
     };
+  }
+
+  /// 手机端操作组：等距 8px 排列，主操作（搜索）在最右且反色强调。
+  Widget _actionRow(List<Widget?> items) {
+    final children = items.whereType<Widget>().toList();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          children[i],
+        ],
+      ],
+    );
   }
 }
