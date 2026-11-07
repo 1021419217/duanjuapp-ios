@@ -395,29 +395,59 @@ func (d *Downloader) resolveHanxiaoquanMedia(ctx context.Context, task Task) (pr
 	if err != nil {
 		return providerMedia{}, err
 	}
-	address := ""
+	// 播放页往往同时给出多条线路 / 多个清晰度地址。早期只取第一个，
+	// 主线路一旦被 CDN 拒绝（403）就整集播不了。这里把本页出现的播放地址
+	// 全部收集为备选线路，交给自动换线路与播放器的「线路 N」切换。
+	addresses := make([]string, 0, 8)
+	seen := map[string]bool{}
+	add := func(raw string) {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			return
+		}
+		if strings.HasPrefix(value, "//") {
+			value = "https:" + value
+		}
+		if !isProviderHTTPMediaURL(value) || seen[value] {
+			return
+		}
+		seen[value] = true
+		addresses = append(addresses, value)
+	}
 	if match := reHanxiaoquanNow.FindStringSubmatch(body); len(match) > 1 {
-		address = strings.TrimSpace(match[1])
+		add(match[1])
 	}
-	if address == "" {
-		address = reHanxiaoquanMediaAny.FindString(body)
+	for _, raw := range reHanxiaoquanMediaAny.FindAllString(body, -1) {
+		add(raw)
 	}
-	if address == "" {
+	if len(addresses) == 0 {
 		return providerMedia{}, errors.New("韩小圈该集暂无可用播放地址")
 	}
-	if strings.HasPrefix(address, "//") {
-		address = "https:" + address
+	// 播放 CDN 的防盗链通常校验「播放页」Referer，只给站点根容易被 403。
+	referer := hanxiaoquanPlayURL(playURL)
+	if referer == "" {
+		referer = hanxiaoquanSiteBaseURL + "/"
 	}
-	if !isProviderHTTPMediaURL(address) {
-		return providerMedia{}, errors.New("韩小圈播放地址无效")
+	options := make([]providerMedia, 0, len(addresses))
+	for _, address := range addresses {
+		options = append(options, providerMedia{URL: address, Referer: referer})
 	}
-	parsed, err := url.Parse(address)
+	media := options[0]
+	media.Variants = options[1:]
+	parsed, err := url.Parse(media.URL)
 	if err != nil {
 		return providerMedia{}, errors.New("韩小圈播放地址无效")
 	}
-	media := providerMedia{URL: address, Referer: hanxiaoquanSiteBaseURL + "/"}
 	if strings.HasSuffix(strings.ToLower(parsed.Path), ".m3u8") {
-		return d.prepareWebProviderMedia(ctx, media, "韩小圈")
+		prepared, err := d.prepareWebProviderMedia(ctx, media, "韩小圈")
+		if err == nil {
+			return prepared, nil
+		}
+		// 主线路 403 / 404 / 播放列表失效时自动改用其它线路。
+		if fallback, ok := d.prepareWebProviderRouteFallback(ctx, media, "韩小圈"); ok {
+			return fallback, nil
+		}
+		return providerMedia{}, err
 	}
 	return media, nil
 }

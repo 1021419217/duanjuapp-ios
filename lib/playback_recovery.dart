@@ -1,9 +1,11 @@
+import 'dart:math' as math;
+
 import 'models.dart';
 
 enum PlaybackRecoveryAction { alternative, refresh, stop }
 
 class PlaybackRecovery {
-  static const maxAttempts = 3;
+  static const minAttempts = 3;
   int _attempts = 0;
   bool _refreshed = false;
 
@@ -13,7 +15,10 @@ class PlaybackRecovery {
   }
 
   PlaybackRecoveryAction next(PlaybackPlan plan) {
-    if (_attempts >= maxAttempts) {
+    // 多线路源要允许把每条线路都试一遍再放弃。原来固定 3 次，线路一多
+    // 还没切完就报「自动恢复未成功」；上限随线路数放宽，并设硬顶防止死循环。
+    final limit = math.min(math.max(minAttempts, plan.routeCount + 1), 8);
+    if (_attempts >= limit) {
       return PlaybackRecoveryAction.stop;
     }
     if (plan.hasAlternative) {

@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import '../app_scope.dart';
 import 'focus_ring.dart';
 
-/// 顶栏操作按钮：统一的液态玻璃圆钮（40×40）。
+/// 顶栏操作按钮：单层低对比磨砂圆钮（40×40）。
 ///
-/// 真实背景模糊 + 斜向渐变 + 细亮描边 + 顶部弧形内高光，
-/// 与主标题区的换源胶囊是同一套玻璃语言。[accent] 只把玻璃调得更亮、
-/// 加一圈微光晕来区分主次，不再用白底反色（视觉上太跳、不协调）。
+/// 只用「一层圆形玻璃 + 一圈极细描边 + 图标」，不再叠加渐变、顶部内高光、
+/// 外发光等多重圆形装饰：那些层在浅色详情页（背景取自封面）上会叠出好几个
+/// 同心圆边界，尤其深色内高光会在圆里糊出一块深色半圆，看起来像图标重影。
+/// [accent] 仅把玻璃调亮一点点区分主次，不额外加发光。
 class BarButton extends StatelessWidget {
   const BarButton({
     super.key,
@@ -22,7 +23,7 @@ class BarButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onPressed;
 
-  /// 主操作强调：更亮更透的玻璃与外发光，仅用于手机顶栏最常用的动作。
+  /// 主操作强调：略微提亮玻璃，不产生额外图层或发光。
   final bool accent;
 
   @override
@@ -50,10 +51,26 @@ class BarButton extends StatelessWidget {
     }
 
     final dark = theme.brightness == Brightness.dark;
-    final glass = dark ? Colors.white : colors.onSurface;
+    final tint = dark ? Colors.white : colors.onSurface;
     final ink = dark ? Colors.white : colors.onSurface;
-    final strong = accent;
     final inactive = onPressed == null;
+
+    // 单层均匀玻璃：一个圆、一层底色、一圈极细描边，没有第二层圆形边界。
+    final fill = tint.withValues(
+      alpha: inactive
+          ? 0.04
+          : accent
+          ? 0.15
+          : 0.08,
+    );
+    final hairline = tint.withValues(
+      alpha: inactive
+          ? 0.07
+          : accent
+          ? 0.22
+          : 0.14,
+    );
+
     return FocusRing(
       radius: 999,
       child: Tooltip(
@@ -64,98 +81,27 @@ class BarButton extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: onPressed,
               customBorder: const CircleBorder(),
-              splashColor: glass.withValues(alpha: 0.18),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: strong
-                      ? [
-                          BoxShadow(
-                            color: glass.withValues(alpha: 0.16),
-                            blurRadius: 14,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: ClipOval(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            glass.withValues(
-                              alpha: inactive
-                                  ? 0.05
-                                  : strong
-                                  ? 0.26
-                                  : 0.13,
-                            ),
-                            glass.withValues(
-                              alpha: inactive
-                                  ? 0.02
-                                  : strong
-                                  ? 0.11
-                                  : 0.05,
-                            ),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: glass.withValues(
-                            alpha: inactive
-                                ? 0.08
-                                : strong
-                                ? 0.42
-                                : 0.20,
-                          ),
-                          width: strong ? 1.2 : 1,
-                        ),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // 顶部弧形内高光，模拟玻璃折射出的厚度。
-                          Positioned(
-                            top: 1,
-                            left: 7,
-                            right: 7,
-                            height: 13,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    glass.withValues(
-                                      alpha: strong ? 0.44 : 0.24,
-                                    ),
-                                    glass.withValues(alpha: 0),
-                                  ],
-                                ),
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(20),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            icon,
-                            size: strong ? 20 : 19,
-                            color: ink.withValues(alpha: inactive ? 0.38 : 1),
-                          ),
-                        ],
-                      ),
+              splashColor: ink.withValues(alpha: 0.10),
+              child: ClipOval(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: fill,
+                      border: Border.all(color: hairline, width: 0.8),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 19,
+                      color: ink.withValues(alpha: inactive ? 0.38 : 0.92),
                     ),
                   ),
                 ),
