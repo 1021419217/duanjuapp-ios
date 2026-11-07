@@ -11,6 +11,7 @@ import '../shell/app_shell.dart';
 import '../widgets/drama_grid.dart';
 import '../widgets/drama_tile.dart';
 import '../widgets/focus_ring.dart';
+import '../widgets/frosted_header.dart';
 import '../widgets/page_header.dart';
 import '../widgets/search_field.dart';
 import '../widgets/status_view.dart';
@@ -182,21 +183,33 @@ class _FollowPageState extends State<FollowPage> {
     VoidCallback? onPressed, {
     IconData? icon,
     FocusNode? focusNode,
-  }) => FocusRing(
-    radius: 20,
-    child: icon == null
-        ? TextButton(
-            focusNode: focusNode,
-            onPressed: onPressed,
-            child: Text(label),
-          )
-        : TextButton.icon(
-            focusNode: focusNode,
-            onPressed: onPressed,
-            icon: Icon(icon, size: 18),
-            label: Text(label),
-          ),
-  );
+  }) {
+    // 手机端顶栏文字按钮换成与首页同款的低对比磨砂胶囊；
+    // 电视端保留实心 TextButton，遥控器焦点更清楚。
+    if (AppScope.formFactorOf(context) != FormFactor.television) {
+      return GlassAction(
+        label: label,
+        icon: icon,
+        onPressed: onPressed,
+        focusNode: focusNode,
+      );
+    }
+    return FocusRing(
+      radius: 20,
+      child: icon == null
+          ? TextButton(
+              focusNode: focusNode,
+              onPressed: onPressed,
+              child: Text(label),
+            )
+          : TextButton.icon(
+              focusNode: focusNode,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 18),
+              label: Text(label),
+            ),
+    );
+  }
 
   Widget _editButtonFor(_View view, {bool icon = true}) => _textButton(
     '编辑',
@@ -247,16 +260,25 @@ class _FollowPageState extends State<FollowPage> {
     ),
   );
 
-  Widget _sourceChip(String id, String label, _View view) => FocusRing(
-    radius: 8,
-    child: ChoiceChip(
-      key: ValueKey('follow-source-$id'),
-      label: Text(label),
-      showCheckmark: false,
-      selected: view.source == id,
-      onSelected: (_) => setState(() => _source = id),
-    ),
-  );
+  Widget _sourceChip(String id, String label, _View view) =>
+      AppScope.formFactorOf(context) == FormFactor.television
+      ? FocusRing(
+          radius: 8,
+          child: ChoiceChip(
+            key: ValueKey('follow-source-$id'),
+            label: Text(label),
+            showCheckmark: false,
+            selected: view.source == id,
+            onSelected: (_) => setState(() => _source = id),
+          ),
+        )
+      : GlassChip(
+          key: ValueKey('follow-source-$id'),
+          label: label,
+          selected: view.source == id,
+          onTap: () => setState(() => _source = id),
+          height: 34,
+        );
 
   Widget? _sources(_View view, {required double inset, bool scroll = false}) {
     if (view.sources.length < 2) return null;
@@ -279,32 +301,53 @@ class _FollowPageState extends State<FollowPage> {
 
   Widget _phone(BuildContext context, _View view) {
     final selection = view.selection;
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: _content(
-          context,
-          view,
-          inset: 16,
-          header: [
-            if (selection == null)
-              PageHeader(
-                title: '追剧',
-                count: '${view.shown.length}',
-                actions: [_editButtonFor(view, icon: false)],
-              )
-            else
-              PageHeader(
-                title: '已选择 ${selection.length} 部',
-                actions: [_selectAll(view), _textButton('完成', _finishEditing)],
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: _search(),
-            ),
-            ?_sources(view, inset: 16, scroll: true),
-          ],
+    final header = <Widget>[
+      if (selection == null)
+        PageHeader(
+          title: '追剧',
+          count: '${view.shown.length}',
+          actions: [_editButtonFor(view, icon: false)],
+        )
+      else
+        PageHeader(
+          title: '已选择 ${selection.length} 部',
+          actions: [_selectAll(view), _textButton('完成', _finishEditing)],
         ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: _search(),
+      ),
+      ?_sources(view, inset: 16, scroll: true),
+    ];
+    // 与首页一致：顶栏浮在内容之上做磨砂，内容延伸到屏顶并在首部留白，
+    // 滚动时剧集卡片从玻璃背后透出。
+    final headerHeight =
+        62.0 + 48.0 + (view.sources.length > 1 ? 46.0 : 0.0) + 8.0;
+    final topInset = MediaQuery.paddingOf(context).top + headerHeight;
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _content(
+              context,
+              view,
+              inset: 16,
+              top: topInset,
+              header: const [],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: FrostedHeader(
+              child: SafeArea(
+                bottom: false,
+                child: Column(mainAxisSize: MainAxisSize.min, children: header),
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: selection == null
           ? null
@@ -561,8 +604,8 @@ class _FollowPageState extends State<FollowPage> {
               bottom: AppScope.of(context).television
                   ? 27
                   : (AppScope.formFactorOf(context) == FormFactor.phone
-                      ? 100
-                      : 32),
+                        ? 100
+                        : 32),
             ),
           ),
         ],

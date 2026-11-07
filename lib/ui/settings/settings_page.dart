@@ -9,6 +9,7 @@ import '../shell/app_shell.dart';
 import '../users/users_view.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
+import '../widgets/frosted_header.dart';
 import '../widgets/group_card.dart';
 import 'appearance_settings.dart';
 import 'settings_rows.dart';
@@ -266,56 +267,89 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _phone(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('设置')),
-    body: ListenableBuilder(
-      listenable: widget.store,
-      builder: (context, _) {
-        final groups = SettingsGroup.values;
-        const sections = ['内容与站源', '设备与数据', '界面与关于'];
-        return ListView(
-          // 底部留出悬浮胶囊导航的空间，避免最后一项被遮住。
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
-          children: [
-            SectionHeader(
-              title: '快捷入口',
-              padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
-            ),
-            _historyShortcut(),
-            for (var section = 0; section < sections.length; section++) ...[
-              SectionHeader(
-                title: sections[section],
-                padding: const EdgeInsets.fromLTRB(4, 18, 8, 8),
-              ),
-              GroupCard(
-                children: [
-                  for (
-                    var i = section * 3;
-                    i < groups.length && i < section * 3 + 3;
-                    i++
-                  )
-                    SettingsTile(
-                      icon: groups[i].icon,
-                      iconColor: _tileColors[i % _tileColors.length],
-                      title: groups[i].label,
-                      subtitle: _summary(groups[i]),
-                      onTap: () => _openGroup(groups[i]),
-                    ),
+    // 与首页同款：内容从磨砂顶栏背后透出，标题文字换成玻璃胶囊。
+    extendBodyBehindAppBar: true,
+    appBar: AppBar(
+      surfaceTintColor: Colors.transparent,
+      flexibleSpace: const FrostedHeader(fill: true),
+      title: const GlassTitle(title: '设置'),
+    ),
+    body: SafeArea(
+      top: true,
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.only(top: kToolbarHeight),
+        child: ListenableBuilder(
+          listenable: widget.store,
+          builder: (context, _) {
+            final groups = SettingsGroup.values;
+            const sections = ['内容与站源', '设备与数据', '界面与关于'];
+            return ListView(
+              // 底部留出悬浮胶囊导航的空间，避免最后一项被遮住。
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+              children: [
+                SectionHeader(
+                  title: '快捷入口',
+                  padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
+                ),
+                _historyShortcut(),
+                for (var section = 0; section < sections.length; section++) ...[
+                  SectionHeader(
+                    title: sections[section],
+                    padding: const EdgeInsets.fromLTRB(4, 18, 8, 8),
+                  ),
+                  GroupCard(
+                    children: [
+                      for (
+                        var i = section * 3;
+                        i < groups.length && i < section * 3 + 3;
+                        i++
+                      )
+                        SettingsTile(
+                          icon: groups[i].icon,
+                          iconColor: _tileColors[i % _tileColors.length],
+                          title: groups[i].label,
+                          subtitle: _summary(groups[i]),
+                          onTap: () => _openGroup(groups[i]),
+                        ),
+                    ],
+                  ),
                 ],
-              ),
-            ],
-          ],
-        );
-      },
+              ],
+            );
+          },
+        ),
+      ),
     ),
   );
 
   void _openGroup(SettingsGroup group) => openPage<void>(
     context,
     (_) => Scaffold(
-      appBar: AppBar(title: Text(group.label)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [_section(group)],
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        surfaceTintColor: Colors.transparent,
+        flexibleSpace: const FrostedHeader(fill: true),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: BarButton(
+            icon: Icons.arrow_back_rounded,
+            tooltip: '返回',
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        title: GlassTitle(title: group.label),
+      ),
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.only(top: kToolbarHeight),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [_section(group)],
+          ),
+        ),
       ),
     ),
   );

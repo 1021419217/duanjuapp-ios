@@ -28,33 +28,42 @@ class SearchField extends StatelessWidget {
   final bool letterKeyboard;
   final TitleMatches? matches;
 
-  InputDecoration _decoration(ColorScheme colors) {
+  InputDecoration _decoration(ColorScheme colors, {required bool glass}) {
     final radius = BorderRadius.circular(height / 2);
+    // 手机端顶栏是磨砂玻璃，输入框也换成同款半透明玻璃 + 极细描边，
+    // 不再是一块实心色块；平板 / 电视端保留实心底，焦点更明确。
+    final edge = BorderSide(
+      color: colors.onSurface.withValues(alpha: glass ? 0.10 : 0),
+      width: glass ? 0.8 : 0,
+    );
     return InputDecoration(
       hintText: hint,
       isDense: true,
       filled: true,
-      fillColor: colors.surfaceContainerHigh,
+      fillColor: glass
+          ? colors.surfaceContainerHigh.withValues(alpha: 0.32)
+          : colors.surfaceContainerHigh,
       contentPadding: EdgeInsets.zero,
       prefixIcon: Icon(
         Icons.search_rounded,
         size: 20,
         color: colors.onSurfaceVariant,
       ),
-      border: OutlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide.none,
-      ),
+      border: OutlineInputBorder(borderRadius: radius, borderSide: edge),
+      enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: edge),
       focusedBorder: OutlineInputBorder(
         borderRadius: radius,
-        borderSide: BorderSide(color: colors.primary, width: 2),
+        borderSide: BorderSide(color: colors.primary, width: 1.6),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final decoration = _decoration(Theme.of(context).colorScheme);
+    final decoration = _decoration(
+      Theme.of(context).colorScheme,
+      glass: AppScope.formFactorOf(context) == FormFactor.phone,
+    );
     final television = AppScope.of(context).television;
     // 隐藏 EditText 那套原生输入法只有 Android 侧实现了。Windows / macOS 即使在
     // 设置里切到「电视」界面，也得继续用普通输入框，否则点搜索框什么都不会发生。

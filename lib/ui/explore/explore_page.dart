@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
@@ -13,6 +12,7 @@ import '../widgets/bar_button.dart';
 import '../widgets/category_tabs.dart';
 import '../widgets/choice_panel.dart';
 import '../widgets/drama_grid.dart';
+import '../widgets/frosted_header.dart';
 import '../widgets/page_header.dart';
 import '../widgets/source_bar.dart';
 import '../widgets/status_view.dart';
@@ -102,30 +102,7 @@ class ExplorePageState extends State<ExplorePage> {
   /// 手机端磨砂顶栏：与底栏 NavigationBar 用同一套「内容延伸到底 +
   /// BackdropFilter 模糊透出」的逻辑。顶栏浮在内容之上，内容滚动时
   /// 从它背后经过并被模糊，而不是被一条实心横条挡在下方。
-  Widget _frostedHeader(Widget child) {
-    final colors = Theme.of(context).colorScheme;
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                colors.surface.withValues(alpha: 0.66),
-                colors.surface.withValues(alpha: 0.34),
-              ],
-            ),
-            border: Border(
-              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.07)),
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
+  Widget _frostedHeader(Widget child) => FrostedHeader(child: child);
 
   Widget _swipeHintBadge() => IgnorePointer(
     child: Center(

@@ -63,7 +63,7 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
     final form = AppScope.formFactorOf(context);
     final colors = Theme.of(context).colorScheme;
     final (height, fontSize, padding, fade) = switch (form) {
-      FormFactor.phone => (48.0, 15.0, 12.0, 32.0),
+      FormFactor.phone => (48.0, 15.0, 12.0, 20.0),
       FormFactor.pad || FormFactor.window => (48.0, 14.0, 14.0, 40.0),
       FormFactor.television => (44.0, 16.0, 16.0, 48.0),
     };
@@ -141,7 +141,12 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
                           gradient: LinearGradient(
                             colors: [
                               colors.surface.withValues(alpha: 0),
-                              colors.surface,
+                              // 手机端顶栏浮在内容之上做磨砂，这里若用不透明
+                              // 纯色收边，会在「全部分类」左侧糊出一整块白板，
+                              // 还把最右侧标签吃掉。改成极淡渐隐即可。
+                              colors.surface.withValues(
+                                alpha: form == FormFactor.phone ? 0.16 : 1.0,
+                              ),
                             ],
                           ),
                         ),

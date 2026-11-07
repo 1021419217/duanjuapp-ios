@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../local_store.dart';
 
+import '../ui/widgets/bar_button.dart';
+import '../ui/widgets/frosted_header.dart';
 import '../ui/widgets/focus_ring.dart';
 import '../ui/widgets/status_view.dart';
 import 'live_models.dart';
@@ -197,19 +199,33 @@ class _LivePageState extends State<LivePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    // 与首页同一套顶栏逻辑：内容延伸到屏顶，从磨砂玻璃背后透出。
+    extendBodyBehindAppBar: true,
     appBar: AppBar(
-      title: const Text('直播'),
+      surfaceTintColor: Colors.transparent,
+      flexibleSpace: const FrostedHeader(fill: true),
+      title: const GlassTitle(title: '直播'),
       actions: [
-        IconButton(
-          tooltip: '刷新',
-          onPressed: _loading
-              ? null
-              : () => unawaited(_loadPlatforms(force: true)),
-          icon: const Icon(Icons.refresh_rounded),
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: BarButton(
+            icon: Icons.refresh_rounded,
+            tooltip: '刷新',
+            onPressed: _loading
+                ? null
+                : () => unawaited(_loadPlatforms(force: true)),
+          ),
         ),
       ],
     ),
-    body: _body(context),
+    body: SafeArea(
+      top: true,
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.only(top: kToolbarHeight),
+        child: _body(context),
+      ),
+    ),
   );
 
   Widget _body(BuildContext context) {
@@ -330,45 +346,13 @@ class _Chip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return FocusRing(
-      radius: 999,
-      child: Material(
-        color: selected ? colors.primary : colors.surfaceContainerHigh,
-        shape: const StadiumBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 6,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? colors.onPrimary : colors.onSurface,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-                if (badge case final badge?)
-                  Text(
-                    badge,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: (selected ? colors.onPrimary : colors.onSurface)
-                          .withValues(alpha: .7),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => GlassChip(
+    label: label,
+    badge: badge,
+    selected: selected,
+    onTap: onTap,
+    height: 40,
+  );
 }
 
 class _ChannelTile extends StatelessWidget {
