@@ -179,7 +179,17 @@ class _Tab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    // 选中文字与下划线原本写死白色：浅色主题下首页顶栏是浅色磨砂玻璃，
+    // 白字会整块消失，只剩一小截白色指示条。改成跟随主题的深色文字 +
+    // 主题色下划线，并补一层极淡玻璃底，两种主题下都能看清。
+    final ink = colors.onSurface;
+    final accent = colors.primary;
+    final labelColor = selected
+        ? ink
+        : ink.withValues(alpha: dark ? 0.66 : 0.72);
     return Semantics(
       selected: selected,
       child: FocusRing(
@@ -188,18 +198,31 @@ class _Tab extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           focusColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: padding),
             child: Stack(
               alignment: Alignment.center,
               children: [
+                if (selected)
+                  Positioned.fill(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: dark ? 0.18 : 0.10),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: accent.withValues(alpha: dark ? 0.30 : 0.20),
+                        ),
+                      ),
+                    ),
+                  ),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: fontSize,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                    color: selected ? Colors.white : colors.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: labelColor,
                   ),
                 ),
                 Positioned(
@@ -210,7 +233,7 @@ class _Tab extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     decoration: BoxDecoration(
-                      color: selected ? Colors.white : Colors.transparent,
+                      color: selected ? accent : Colors.transparent,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(3),
                       ),
@@ -237,7 +260,7 @@ class _AllCategoriesChip extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Builder(
       builder: (anchor) => Padding(
-        padding: const EdgeInsets.only(left: 4, right: 12),
+        padding: const EdgeInsets.only(left: 8, right: 12),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
