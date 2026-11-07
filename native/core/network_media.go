@@ -21,16 +21,51 @@ type huangguoPreviewSession struct {
 	pending chan struct{}
 }
 
+// mediaRequestDowngradeKey 用于播放列表 403 后的降级重试：部分 CDN 节点会把
+// 带 Origin / Sec-Fetch-* 的跨域指纹请求误判为盗链，去掉这些头后反而放行。
+type mediaRequestDowngradeKey struct{}
+
 func mediaRequestHeaders(request *http.Request, referer string) {
 	request.Header.Set("User-Agent", userAgent)
 	request.Header.Set("Referer", referer)
 	request.Header.Set("Accept", "*/*")
 	request.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
+	if downgrade, _ := request.Context().Value(mediaRequestDowngradeKey{}).(bool); downgrade {
+		request.Header.Del("Origin")
+		request.Header.Del("Sec-Fetch-Mode")
+		request.Header.Del("Sec-Fetch-Dest")
+		return
+	}
 	request.Header.Set("Sec-Fetch-Mode", "cors")
 	request.Header.Set("Sec-Fetch-Dest", "empty")
 	if origin, err := url.Parse(referer); err == nil && origin.Host != "" {
 		request.Header.Set("Origin", origin.Scheme+"://"+origin.Host)
 	}
+}
+
+// mediaPlaylistReferers 给出播放列表请求的 Referer 尝试序列：原播放页 →
+// 站点根 → CDN 自身域。各 CDN 防盗链校验口径不一，逐个降级可覆盖多数节点。
+func mediaPlaylistReferers(address, referer string) []string {
+	origin := func(raw string) string {
+		parsed, err := url.Parse(raw)
+		if err != nil || parsed.Host == "" {
+			return ""
+		}
+		return parsed.Scheme + "://" + parsed.Host + "/"
+	}
+	variants := make([]string, 0, 3)
+	seen := map[string]bool{}
+	for _, candidate := range []string{referer, origin(referer), origin(address)} {
+		if candidate == "" || seen[candidate] {
+			continue
+		}
+		seen[candidate] = true
+		variants = append(variants, candidate)
+	}
+	if len(variants) == 0 {
+		variants = []string{referer}
+	}
+	return variants
 }
 
 func (d *Downloader) isHuangguoVideoURL(address *url.URL) bool {
@@ -176,34 +211,66 @@ func (d *Downloader) fetchMediaPlaylist(ctx context.Context, address, referer st
 	if !isProviderHTTPMediaURL(address) {
 		return "", "", errors.New("播放列表地址无效")
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
-	if err != nil {
-		return "", "", err
-	}
-	request.Header.Set("Referer", referer)
-	response, err := d.doMediaRequest(request)
-	if err != nil {
-		return "", "", err
-	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(response.Body, (4<<20)+1))
-	if err != nil || len(body) > 4<<20 {
-		return "", "", errors.New("播放列表过大或读取失败")
-	}
-	if response.StatusCode != http.StatusOK || catalogResponseBlockReason(response, body) != "" {
-		return "", "", d.catalogResponseError(request, response, body)
-	}
-	text := strings.TrimSpace(strings.TrimPrefix(string(body), "\ufeff"))
-	if !strings.HasPrefix(text, "#EXTM3U") {
-		var envelope apiEnvelope
-		if json.Unmarshal(body, &envelope) == nil && strings.Trim(string(envelope.Code), `"`) == "5005" {
-			return "", "", &legacyAPIError{code: "5005", message: "播放会话已失效"}
+	// 同一个 m3u8 在不同网络 / CDN 节点下可能一会儿 200 一会儿 403（节点风控）。
+	// 早期一次 403 就整集播不了；这里依次降级 Referer 与请求头重试，成功即返回，
+	// 正常情况第一次就返回，不会拖慢播放。
+	referers := mediaPlaylistReferers(address, referer)
+	var lastErr error
+	for attempt, ref := range referers {
+		if err := ctx.Err(); err != nil {
+			return "", "", err
 		}
-		return "", "", errors.New("站源未返回有效的播放列表，链接可能已失效")
+		if attempt > 0 {
+			select {
+			case <-time.After(time.Duration(attempt) * 200 * time.Millisecond):
+			case <-ctx.Done():
+				return "", "", ctx.Err()
+			}
+		}
+		attemptCtx := ctx
+		if attempt > 0 {
+			attemptCtx = context.WithValue(ctx, mediaRequestDowngradeKey{}, true)
+		}
+		request, err := http.NewRequestWithContext(attemptCtx, http.MethodGet, address, nil)
+		if err != nil {
+			return "", "", err
+		}
+		request.Header.Set("Referer", ref)
+		response, err := d.doMediaRequest(request)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, (4<<20)+1))
+		response.Body.Close()
+		if readErr != nil || len(body) > 4<<20 {
+			lastErr = errors.New("播放列表过大或读取失败")
+			continue
+		}
+		// 403 / 5xx 属于节点级拒绝，换一组头再试；其它错误不重试。
+		if response.StatusCode == http.StatusForbidden || response.StatusCode >= 500 {
+			lastErr = d.catalogResponseError(request, response, body)
+			continue
+		}
+		if response.StatusCode != http.StatusOK || catalogResponseBlockReason(response, body) != "" {
+			return "", "", d.catalogResponseError(request, response, body)
+		}
+		text := strings.TrimSpace(strings.TrimPrefix(string(body), "\ufeff"))
+		if !strings.HasPrefix(text, "#EXTM3U") {
+			var envelope apiEnvelope
+			if json.Unmarshal(body, &envelope) == nil && strings.Trim(string(envelope.Code), `"`) == "5005" {
+				return "", "", &legacyAPIError{code: "5005", message: "播放会话已失效"}
+			}
+			return "", "", errors.New("站源未返回有效的播放列表，链接可能已失效")
+		}
+		finalURL := address
+		if response.Request != nil && response.Request.URL != nil {
+			finalURL = response.Request.URL.String()
+		}
+		return text, finalURL, nil
 	}
-	finalURL := address
-	if response.Request != nil && response.Request.URL != nil {
-		finalURL = response.Request.URL.String()
+	if lastErr == nil {
+		lastErr = errors.New("播放线路暂时不可用")
 	}
-	return text, finalURL, nil
+	return "", "", lastErr
 }

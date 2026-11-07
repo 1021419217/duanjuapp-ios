@@ -123,7 +123,7 @@ func (d *Downloader) prepareWebProviderMedia(ctx context.Context, media provider
 		}
 		media.Playlist, media.URL, err = d.fetchMediaPlaylist(ctx, media.URL, media.Referer)
 		if err != nil {
-			return providerMedia{}, fmt.Errorf("获取%s播放列表失败：%w", sourceName, err)
+			return providerMedia{}, fmt.Errorf("%s播放线路暂时不可用（已自动重试）：%w", sourceName, err)
 		}
 		if !strings.HasPrefix(strings.TrimSpace(strings.TrimPrefix(media.Playlist, "\ufeff")), "#EXTM3U") {
 			return providerMedia{}, fmt.Errorf("%s播放列表无效，请重新解析播放", sourceName)

@@ -39,6 +39,7 @@ var (
 	reHanxiaoquanEpisodes = regexp.MustCompile(`(?is)<a title="([^"]*)" href="(/play/\d+-\d+-\d+\.html)"`)
 	reHanxiaoquanNow      = regexp.MustCompile(`(?is)var\s+now\s*=\s*["']([^"']+)["']`)
 	reHanxiaoquanMediaAny = regexp.MustCompile(`(?i)https?://[^"'\s<>\\]+\.(?:m3u8|mp4)(?:\?[^"'\s<>\\]*)?`)
+	reHanxiaoquanPlayPath = regexp.MustCompile(`/play/(\d+)-(\d+)-(\d+)\.html`)
 	reHanxiaoquanTag      = regexp.MustCompile(`<[^>]+>`)
 	reHanxiaoquanLeadNum  = regexp.MustCompile(`(\d+)`)
 )
@@ -419,6 +420,29 @@ func (d *Downloader) resolveHanxiaoquanMedia(ctx context.Context, task Task) (pr
 	}
 	for _, raw := range reHanxiaoquanMediaAny.FindAllString(body, -1) {
 		add(raw)
+	}
+	// 播放页 /play/{剧集}-{线路}-{集数}.html 的中间数字是线路号。同一集常
+	// 有多条线路（分属不同 CDN），但单页只给一个地址；补齐另一条线路，
+	// 主线路被 CDN 拒绝时「自动换线路」才有线路可换。只探测一条，
+	// 正常解析最多多一个请求，不拖慢播放。
+	if len(addresses) == 1 {
+		if parts := reHanxiaoquanPlayPath.FindStringSubmatch(playURL); len(parts) == 4 {
+			for _, line := range []string{"0", "1"} {
+				if line == parts[2] {
+					continue
+				}
+				alt := fmt.Sprintf("/play/%s-%s-%s.html", parts[1], line, parts[3])
+				if altBody, err := d.hanxiaoquanGet(ctx, alt); err == nil {
+					if match := reHanxiaoquanNow.FindStringSubmatch(altBody); len(match) > 1 {
+						add(match[1])
+					}
+					for _, raw := range reHanxiaoquanMediaAny.FindAllString(altBody, -1) {
+						add(raw)
+					}
+				}
+				break
+			}
+		}
 	}
 	if len(addresses) == 0 {
 		return providerMedia{}, errors.New("韩小圈该集暂无可用播放地址")
