@@ -63,7 +63,7 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
     final form = AppScope.formFactorOf(context);
     final colors = Theme.of(context).colorScheme;
     final (height, fontSize, padding, fade) = switch (form) {
-      FormFactor.phone => (48.0, 15.0, 12.0, 20.0),
+      FormFactor.phone => (48.0, 15.0, 16.0, 20.0),
       FormFactor.pad || FormFactor.window => (48.0, 14.0, 14.0, 40.0),
       FormFactor.television => (44.0, 16.0, 16.0, 48.0),
     };
@@ -182,9 +182,10 @@ class _Tab extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final dark = theme.brightness == Brightness.dark;
-    // 选中文字与下划线原本写死白色：浅色主题下首页顶栏是浅色磨砂玻璃，
-    // 白字会整块消失，只剩一小截白色指示条。改成跟随主题的深色文字 +
-    // 主题色下划线，并补一层极淡玻璃底，两种主题下都能看清。
+    // 选中态只保留一个完整的玻璃胶囊：由「文字 + 左右内边距」自己撑出尺寸，
+    // 文字被完整包住、四周留白均匀，不再叠一条悬在胶囊外面的下划线。
+    // 选中时把外层留白等量让给胶囊内边距，标签总宽度不变，切换不跳动。
+    // 文字颜色跟随主题（onSurface），浅色顶栏下不会再出现白字消失。
     final ink = colors.onSurface;
     final accent = colors.primary;
     final labelColor = selected
@@ -193,54 +194,39 @@ class _Tab extends StatelessWidget {
     return Semantics(
       selected: selected,
       child: FocusRing(
-        radius: 8,
+        radius: 17,
         offset: -3,
         child: InkWell(
           onTap: onTap,
           focusColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(17),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: padding),
-            child: Stack(
+            padding: EdgeInsets.symmetric(
+              horizontal: selected ? 0 : padding,
+              vertical: 7,
+            ),
+            child: Container(
               alignment: Alignment.center,
-              children: [
-                if (selected)
-                  Positioned.fill(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: dark ? 0.18 : 0.10),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: accent.withValues(alpha: dark ? 0.30 : 0.20),
-                        ),
+              padding: selected
+                  ? const EdgeInsets.symmetric(horizontal: 16)
+                  : EdgeInsets.zero,
+              decoration: selected
+                  ? BoxDecoration(
+                      color: accent.withValues(alpha: dark ? 0.16 : 0.09),
+                      borderRadius: BorderRadius.circular(17),
+                      border: Border.all(
+                        color: accent.withValues(alpha: dark ? 0.30 : 0.20),
                       ),
-                    ),
-                  ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    color: labelColor,
-                  ),
+                    )
+                  : null,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: labelColor,
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: 3,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    decoration: BoxDecoration(
-                      color: selected ? accent : Colors.transparent,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(3),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
