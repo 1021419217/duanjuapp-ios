@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../app_scope.dart';
@@ -129,7 +131,10 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
                     },
                   ),
                 ),
-                if (_overflows)
+                // 手机端右端已有固定的「全部分类」胶囊与细分隔线，不需要
+                // 再叠渐隐：深色主题下那层半透明 surface 会在标签与胶囊之间
+                // 留下一小块暗阴影，浅色主题下则是一块白板。直接不绘制。
+                if (_overflows && form != FormFactor.phone)
                   Positioned(
                     top: 0,
                     right: 0,
@@ -141,12 +146,7 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
                           gradient: LinearGradient(
                             colors: [
                               colors.surface.withValues(alpha: 0),
-                              // 手机端顶栏浮在内容之上做磨砂，这里若用不透明
-                              // 纯色收边，会在「全部分类」左侧糊出一整块白板，
-                              // 还把最右侧标签吃掉。改成极淡渐隐即可。
-                              colors.surface.withValues(
-                                alpha: form == FormFactor.phone ? 0.16 : 1.0,
-                              ),
+                              colors.surface,
                             ],
                           ),
                         ),
@@ -235,59 +235,79 @@ class _Tab extends StatelessWidget {
   }
 }
 
-/// 分类栏右端的「全部分类」入口：带图标的浅色胶囊 + 左侧细分隔线，
-/// 与标签文字同一套视觉语言，固定居右、垂直居中，随手就能点到。
+/// 分类栏右端的「全部分类」入口：与顶栏站源 / 搜索胶囊同一套低对比磨砂
+/// 玻璃（均匀半透明 + 轻模糊 + 极细描边），不再用实心底，避免配色跳脱。
+/// 左侧一道极细分隔线，固定居右、垂直居中。
 class _AllCategoriesChip extends StatelessWidget {
   const _AllCategoriesChip({required this.onShowAll});
   final void Function(BuildContext anchor) onShowAll;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final ink = dark ? Colors.white : theme.colorScheme.onSurface;
     return Builder(
       builder: (anchor) => Padding(
         padding: const EdgeInsets.only(left: 8, right: 12),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 1, height: 22, color: colors.outlineVariant),
+            Container(
+              width: 1,
+              height: 22,
+              color: ink.withValues(alpha: dark ? 0.14 : 0.10),
+            ),
             const SizedBox(width: 10),
             Tooltip(
               message: '全部分类',
-              child: Material(
-                color: colors.surfaceContainerHigh.withValues(alpha: 0.9),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () => onShowAll(anchor),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 11),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: colors.outlineVariant),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.grid_view_rounded,
-                          size: 15,
-                          color: colors.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          '全部分类',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: colors.onSurfaceVariant,
+              child: Semantics(
+                button: true,
+                label: '全部分类',
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(19),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => onShowAll(anchor),
+                    borderRadius: BorderRadius.circular(19),
+                    splashColor: ink.withValues(alpha: 0.10),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(19),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 13),
+                          decoration: BoxDecoration(
+                            color: ink.withValues(alpha: dark ? 0.09 : 0.06),
+                            borderRadius: BorderRadius.circular(19),
+                            border: Border.all(
+                              color: ink.withValues(alpha: dark ? 0.12 : 0.10),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.grid_view_rounded,
+                                size: 16,
+                                color: ink.withValues(alpha: 0.92),
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                '全部分类',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                  color: ink.withValues(alpha: 0.92),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

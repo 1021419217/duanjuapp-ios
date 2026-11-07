@@ -27,7 +27,8 @@ class ExplorePage extends StatefulWidget {
   State<ExplorePage> createState() => ExplorePageState();
 }
 
-class ExplorePageState extends State<ExplorePage> {
+class ExplorePageState extends State<ExplorePage>
+    with SingleTickerProviderStateMixin {
   ExploreFeed? _explore;
   final _scroll = ScrollController();
   final _search = TextEditingController();
@@ -35,6 +36,16 @@ class ExplorePageState extends State<ExplorePage> {
   String _shown = '';
   String? _swipeHint;
   Timer? _hintTimer;
+
+  /// 切分类时的内容过渡动画：初始停在完成态（value = 1），切换时
+  /// forward(from: 0) 重播 340ms 的滑入 + 淡入。
+  late final AnimationController _switchAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 340),
+    value: 1.0,
+  );
+  int _switchDirection = 1;
+  double _dragX = 0;
 
   @override
   void didChangeDependencies() {
@@ -45,6 +56,7 @@ class ExplorePageState extends State<ExplorePage> {
   @override
   void dispose() {
     _hintTimer?.cancel();
+    _switchAnim.dispose();
     _explore?.dispose();
     _scroll.dispose();
     _search.dispose();
@@ -65,6 +77,10 @@ class ExplorePageState extends State<ExplorePage> {
     if (index < 0) return;
     final next = index + delta;
     if (next < 0 || next >= tabs.length) return;
+    // 记录方向并启动过渡动画，再换分类：新内容从滑动反侧滑入淡入，
+    // 而不是整屏一瞬间重建，看起来像卡了一下。
+    _switchDirection = delta > 0 ? 1 : -1;
+    _switchAnim.forward(from: 0);
     explore.select(tabs[next].id);
     _showTabHint(tabs[next].name);
   }
@@ -84,15 +100,35 @@ class ExplorePageState extends State<ExplorePage> {
   Widget _swipeLayer(ExploreFeed explore, Widget child, {double hintTop = 12}) {
     if (AppScope.formFactorOf(context) == FormFactor.television) return child;
     return GestureDetector(
+      // 拖动时内容带阻尼轻微跟手，松手后由切换动画接管，手感更连贯。
+      onHorizontalDragUpdate: (details) {
+        final next = (_dragX + details.delta.dx * 0.10).clamp(-18.0, 18.0);
+        if (next != _dragX) setState(() => _dragX = next);
+      },
       onHorizontalDragEnd: (details) {
         final velocity = details.primaryVelocity ?? 0;
+        setState(() => _dragX = 0);
         if (velocity.abs() < 200) return;
         _switchTabBy(explore, velocity < 0 ? 1 : -1);
       },
+      onHorizontalDragCancel: () => setState(() => _dragX = 0),
       behavior: HitTestBehavior.translucent,
       child: Stack(
         children: [
-          Positioned.fill(child: child),
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _switchAnim,
+              child: child,
+              builder: (context, content) {
+                final t = Curves.easeOutCubic.transform(_switchAnim.value);
+                final slide = (1 - t) * 26.0 * _switchDirection;
+                return Transform.translate(
+                  offset: Offset(_dragX + slide, 0),
+                  child: Opacity(opacity: 0.55 + 0.45 * t, child: content),
+                );
+              },
+            ),
+          ),
           Positioned(top: hintTop, left: 0, right: 0, child: _swipeHintBadge()),
         ],
       ),
