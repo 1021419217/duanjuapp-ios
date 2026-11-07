@@ -48,7 +48,18 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell>
+    with SingleTickerProviderStateMixin {
+  /// 底部 tab 切换过渡：与首页左右滑分类同一套视觉语言（easeOutCubic、
+  /// 方向性滑入 + 淡入 + 轻微缩放），避免 IndexedStack 直接换页像卡了一下。
+  /// 初始停在完成态，切换时 forward(from: 0) 重播 320ms。
+  late final AnimationController _tabAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+    value: 1.0,
+  );
+  int _tabDirection = 1;
+
   final _navigators = [
     for (final _ in AppTab.values) GlobalKey<NavigatorState>(),
   ];
@@ -95,6 +106,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    _tabAnim.dispose();
     FocusManager.instance.removeListener(_followFocus);
     for (final node in _tabFocus) {
       node.dispose();
@@ -109,7 +121,31 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  void _select(AppTab tab) => setState(() => _tab = tab);
+  void _select(AppTab tab) {
+    if (tab == _tab) return;
+    // 按 tab 顺序决定新页从左侧还是右侧滑入，和首页滑分类的方向感一致。
+    _tabDirection = tab.index > _tab.index ? 1 : -1;
+    _tabAnim.forward(from: 0);
+    setState(() => _tab = tab);
+  }
+
+  /// 只包裹绘制层：IndexedStack 仍保留各 tab 独立的 Navigator 栈与页面状态，
+  /// 动画期间新页从反侧滑入 22px、淡入并轻微放大回原尺寸，底栏与顶栏不动。
+  Widget _animatedPages(Widget child) => AnimatedBuilder(
+    animation: _tabAnim,
+    child: child,
+    builder: (context, pages) {
+      final t = Curves.easeOutCubic.transform(_tabAnim.value);
+      final slide = (1 - t) * 22.0 * _tabDirection;
+      return Transform.translate(
+        offset: Offset(slide, 0),
+        child: Transform.scale(
+          scale: 0.99 + 0.01 * t,
+          child: Opacity(opacity: 0.6 + 0.4 * t, child: pages),
+        ),
+      );
+    },
+  );
 
   void _followFocus() {
     final previous = _lastFocus;
@@ -170,25 +206,27 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = NotificationListener<NavigationNotification>(
-      onNotification: (_) {
-        setState(() {});
-        return false;
-      },
-      child: IndexedStack(
-        index: _tab.index,
-        children: [
-          for (final tab in AppTab.values)
-            Navigator(
-              key: _navigators[tab.index],
-              routeTraversalEdgeBehavior: TraversalEdgeBehavior.parentScope,
-              routeDirectionalTraversalEdgeBehavior:
-                  TraversalEdgeBehavior.parentScope,
-              onGenerateInitialRoutes: (_, _) => [
-                MaterialPageRoute<void>(builder: (_) => _root(tab)),
-              ],
-            ),
-        ],
+    final pages = _animatedPages(
+      NotificationListener<NavigationNotification>(
+        onNotification: (_) {
+          setState(() {});
+          return false;
+        },
+        child: IndexedStack(
+          index: _tab.index,
+          children: [
+            for (final tab in AppTab.values)
+              Navigator(
+                key: _navigators[tab.index],
+                routeTraversalEdgeBehavior: TraversalEdgeBehavior.parentScope,
+                routeDirectionalTraversalEdgeBehavior:
+                    TraversalEdgeBehavior.parentScope,
+                onGenerateInitialRoutes: (_, _) => [
+                  MaterialPageRoute<void>(builder: (_) => _root(tab)),
+                ],
+              ),
+          ],
+        ),
       ),
     );
     final television = AppScope.of(context).television;
